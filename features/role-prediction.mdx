@@ -1,0 +1,133 @@
+---
+title: "AI Role Prediction: Find Your Best-Fit Job Roles"
+sidebarTitle: "Role Prediction"
+description: "Resume Insight uses a HuggingFace AI model to analyze your skills and experience text and recommend the most suitable fresher job roles for you."
+---
+
+Finding the right job title to target is one of the most common challenges for freshers and recent graduates. Resume Insight uses an AI classification model to analyze the skills and experience text from your resume and map it to the most relevant fresher job roles — so you have a concrete direction to aim for rather than applying broadly and hoping for the best.
+
+## How It Works
+
+When you submit your resume text to the role prediction endpoint, Resume Insight follows a four-step pipeline:
+
+<Steps>
+  <Step title="Text Input">
+    You provide a combined text string of your technical skills, technologies, and experience summary — the same information already extracted from your resume.
+  </Step>
+  <Step title="AI Classification">
+    The text is sent to a HuggingFace classification model (`distilbert-base-uncased`) hosted on the HuggingFace Inference API. The model evaluates the input and assigns it to one of seven skill-domain categories.
+  </Step>
+  <Step title="Category Mapping">
+    The predicted category label is mapped to a curated list of relevant fresher job roles. Each category covers a distinct career track, ensuring the recommendation is specific and actionable.
+  </Step>
+  <Step title="Response">
+    The API returns the predicted category label, the list of recommended roles, and a confidence score between 0 and 1 so you understand how certain the model is.
+  </Step>
+</Steps>
+
+If the AI model is temporarily unavailable, Resume Insight falls back to a fast keyword-based heuristic that checks your input for framework and technology terms and returns an equivalent recommendation without any service interruption.
+
+## Using Role Prediction
+
+**Endpoint:** `POST /predict-role`
+
+<ParamField body="inputs" type="string" required>
+  The combined text of your technical skills, frameworks, technologies, and experience summary. For best results, include all programming languages, tools, and project domains mentioned in your resume. The input is automatically truncated to 2,000 characters if longer.
+</ParamField>
+
+**Example request:**
+
+```bash
+curl -X POST http://localhost:8000/predict-role \
+  -H "Content-Type: application/json" \
+  -d '{
+    "inputs": "Python FastAPI MongoDB React JavaScript REST APIs Docker Git machine learning data analysis pandas numpy scikit-learn built backend services deployed to AWS intern at TechCorp developed REST APIs"
+  }'
+```
+
+**Example response:**
+
+```json
+{
+  "predicted_label": "programming",
+  "recommended_roles": [
+    "Backend Developer - Fresher"
+  ],
+  "confidence": 0.87
+}
+```
+
+**Response fields explained:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `predicted_label` | string | The skill-domain category the AI assigned to your input |
+| `recommended_roles` | array | List of specific fresher job role titles mapped from the predicted category |
+| `confidence` | float (0–1) | How confident the model is in its prediction — values above 0.7 indicate a strong match |
+
+## Role Categories
+
+Resume Insight maps your skills to one of seven domains, each associated with specific fresher job roles.
+
+<CardGroup cols={2}>
+  <Card title="Technology" icon="laptop-code">
+    **Predicted roles:** Software Engineer – Fresher, Full Stack Developer – Fresher
+
+    Triggered by frontend frameworks, web technologies, and full-stack keywords like React, Angular, Vue, and JavaScript.
+  </Card>
+  <Card title="Programming" icon="terminal">
+    **Predicted roles:** Backend Developer – Fresher
+
+    Triggered by server-side languages and API keywords like Python, Java, Node.js, FastAPI, Django, and Flask.
+  </Card>
+  <Card title="Creativity" icon="paintbrush">
+    **Predicted roles:** UI/UX Designer – Fresher
+
+    Triggered by design and prototyping tools like Figma, Adobe XD, and keywords like UI, UX, and wireframing.
+  </Card>
+  <Card title="Analysis" icon="chart-bar">
+    **Predicted roles:** Data Analyst – Fresher
+
+    Triggered by data tools and keywords like SQL, Excel, Power BI, Tableau, Pandas, and data visualization.
+  </Card>
+  <Card title="Learning" icon="brain">
+    **Predicted roles:** Machine Learning Intern
+
+    Triggered by AI/ML frameworks and keywords like TensorFlow, PyTorch, scikit-learn, deep learning, and NLP.
+  </Card>
+  <Card title="Organization" icon="briefcase">
+    **Predicted roles:** Business Analyst – Fresher
+
+    Triggered by business and stakeholder keywords like requirements analysis, business process, and reporting.
+  </Card>
+  <Card title="Responsibility" icon="shield">
+    **Predicted roles:** Cybersecurity Analyst – Fresher
+
+    Triggered by security and networking keywords like cybersecurity, vulnerability, OWASP, network, and firewall.
+  </Card>
+</CardGroup>
+
+## Auto-Detection via Resume Upload
+
+You do not need to call the role prediction endpoint separately if you upload your resume via the authenticated user endpoint. The `POST /user/upload_resume` endpoint automatically runs role detection as part of the upload pipeline and returns the result alongside your ATS score and extracted data.
+
+```json
+{
+  "status": "success",
+  "structured_info": { "..." },
+  "ats_score": 74,
+  "detected_role": "Backend Developer",
+  "suggested_skills": ["Docker", "Redis", "PostgreSQL", "Kubernetes", "AWS"],
+  "..."
+}
+```
+
+The `detected_role` field uses the same AI pipeline but also incorporates your full resume context — skills, education, internships, and projects — for a more holistic assessment than the standalone `POST /predict-role` endpoint. The `suggested_skills` array lists 5–8 complementary skills you should consider adding based on your detected role.
+
+<Note>
+  Role prediction is optimized for **fresher and entry-level positions**. If you have several years of professional experience, the recommendations may skew toward junior titles. Use the predictions as a directional signal rather than an absolute match.
+</Note>
+
+<Tip>
+  When calling `POST /predict-role` directly, include all your technical skills, frameworks, programming languages, and a brief summary of your projects in the `inputs` text. The more relevant context the model has, the more accurate and specific the recommendation will be.
+</Tip>

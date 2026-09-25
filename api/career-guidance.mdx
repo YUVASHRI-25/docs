@@ -1,0 +1,438 @@
+---
+title: "Career Guidance API: Roadmaps and AI Improvement Tips"
+sidebarTitle: "Career Guidance"
+description: "Two endpoints under /guidance generate personalized career improvement reports and role-specific learning roadmaps powered by LLM analysis."
+---
+
+Resume Insight provides two endpoints under `/guidance` to help you move from knowing your resume's weaknesses to having a concrete plan to fix them. The first endpoint — `POST /guidance/generate` — takes your parsed resume data and returns a comprehensive career guidance report: skill gaps, learning paths, project ideas, certificate recommendations, and a weekly improvement schedule, all tailored to your actual profile. The second endpoint — `POST /guidance/role-roadmap` — takes a target job role and your current skills, then generates a phase-by-phase learning roadmap with milestones, projects, and a realistic timeline to get you job-ready.
+
+---
+
+## POST /guidance/generate
+
+Generate a full AI-powered career guidance report from your resume data. This endpoint analyzes your technical skills, projects, certifications, and areas of interest, then produces a structured plan covering everything from skill gaps to a week-by-week improvement schedule.
+
+**Auth:** Not required
+
+**Content-Type:** `application/json`
+
+### Request Parameters
+
+<ParamField body="resume_data" type="object" required>
+  Structured resume data in the same format returned by
+  `POST /resume/upload_resume` or `POST /user/upload_resume`. Pass the `data`
+  field from those responses directly as the value of `resume_data`. The object
+  must contain at least a `skills` key for meaningful guidance to be generated.
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:8000/guidance/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resume_data": {
+      "name": "Sneha Reddy",
+      "email": "sneha.reddy@email.com",
+      "skills": {
+        "technical": ["Python", "Pandas", "SQL", "Matplotlib"],
+        "soft": ["Communication", "Teamwork"],
+        "area_of_interest": ["Data Science", "Machine Learning"]
+      },
+      "education": {
+        "degree": "B.Sc Statistics",
+        "institution": "Osmania University",
+        "year": "2024"
+      },
+      "projects": [
+        {
+          "title": "Sales Forecasting Model",
+          "description": "Built a linear regression model to predict monthly sales for a retail dataset."
+        }
+      ],
+      "certifications": ["Google Data Analytics – Coursera"]
+    }
+  }'
+```
+
+### Response Fields
+
+<ResponseField name="guidance" type="object">
+  The top-level wrapper object containing all guidance sections.
+
+  <Expandable title="Expand guidance fields">
+    <ResponseField name="guidance.technical_skills" type="array">
+      Your detected technical skills, each with a `name` and estimated `level`
+      (`beginner`, `intermediate`, or `advanced`) inferred from your projects
+      and experience.
+    </ResponseField>
+
+    <ResponseField name="guidance.missing_skills" type="array">
+      Skills that are important for your detected career track but absent from
+      your resume. Each item has a `name` and a `reason` explaining why the
+      skill matters for your profile.
+    </ResponseField>
+
+    <ResponseField name="guidance.learning_paths" type="array">
+      One or more recommended learning tracks (e.g., Data Science, Web
+      Development, Machine Learning / AI). Each path lists a `track` name,
+      `topics`, `tools`, `exercises`, and `projects`, along with an
+      `estimated_time_weeks` value.
+    </ResponseField>
+
+    <ResponseField name="guidance.project_ideas" type="array">
+      Project ideas tailored to your interests and skill level. Each idea
+      includes a `title`, `type` (`mini`, `portfolio`, or `capstone`), and a
+      `description` of what to build.
+    </ResponseField>
+
+    <ResponseField name="guidance.certificate_recommendations" type="array">
+      Certificates worth pursuing — and some to avoid. Each item has a `name`,
+      `value_level` (`high`, `medium`, or `low`), a `recommendation`
+      (`pursue` or `avoid`), and a `reason`.
+    </ResponseField>
+
+    <ResponseField name="guidance.role_matching" type="array">
+      Roles your profile currently matches, with a `match_percentage`, lists of
+      `matched_skills` and `missing_skills`, and additional skills recommended
+      to close the gap.
+    </ResponseField>
+
+    <ResponseField name="guidance.weak_skills" type="array">
+      Generic or low-value skills detected on your resume that add little
+      signal for hiring managers. Each item includes the skill `name` and a
+      `reason` for removing or de-emphasizing it.
+    </ResponseField>
+
+    <ResponseField name="guidance.recommended_tech_stacks" type="array">
+      One or more tech stack recommendations suited to your career direction.
+      Each item has a `stack` name and a `reason` explaining why it fits your
+      profile.
+    </ResponseField>
+
+    <ResponseField name="guidance.career_clarity_summary" type="object">
+      A short summary object containing `primary_alignment` (your most likely
+      career track), `aligned_roles` (best-fit job titles), `roles_to_avoid`,
+      and `reasoning`.
+    </ResponseField>
+
+    <ResponseField name="guidance.weekly_schedule" type="array">
+      A 4–8 week improvement schedule. Each week entry includes a `week`
+      number, `focus` statement, `topics` to cover, `practice_tasks`, and
+      `checkpoints` to assess your progress.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "guidance": {
+    "technical_skills": [
+      { "name": "Python", "level": "intermediate" },
+      { "name": "Pandas", "level": "intermediate" },
+      { "name": "SQL", "level": "beginner" },
+      { "name": "Matplotlib", "level": "beginner" }
+    ],
+    "missing_skills": [
+      {
+        "name": "Scikit-learn",
+        "reason": "Core ML library for classification, regression, and clustering — essential for Data Science roles."
+      },
+      {
+        "name": "Git",
+        "reason": "Version control is expected in every technical role."
+      }
+    ],
+    "learning_paths": [
+      {
+        "track": "Data Science",
+        "topics": ["Statistics & Probability", "Feature Engineering", "Machine Learning Algorithms"],
+        "tools": ["Scikit-learn", "Seaborn", "Jupyter Notebooks"],
+        "exercises": [
+          "Implement one ML algorithm from scratch",
+          "Push practice notebooks to GitHub"
+        ],
+        "projects": ["Customer Churn Prediction", "EDA Dashboard"],
+        "estimated_time_weeks": 6
+      }
+    ],
+    "project_ideas": [
+      {
+        "title": "Retail Sales EDA",
+        "type": "mini",
+        "description": "Exploratory analysis on a public retail dataset to uncover trends and visualize KPIs."
+      },
+      {
+        "title": "End-to-End ML Pipeline",
+        "type": "portfolio",
+        "description": "Train, evaluate, and deploy a classification model with a simple Streamlit front-end."
+      }
+    ],
+    "certificate_recommendations": [
+      {
+        "name": "Google Data Analytics – Coursera",
+        "value_level": "medium",
+        "recommendation": "pursue",
+        "reason": "Shows structured learning for entry-level data roles."
+      },
+      {
+        "name": "Generic MS Office course",
+        "value_level": "low",
+        "recommendation": "avoid",
+        "reason": "Too basic for IT hiring; technical certifications are far more impactful."
+      }
+    ],
+    "role_matching": [
+      {
+        "role": "Data Analyst",
+        "match_percentage": 70,
+        "matched_skills": ["Python", "Pandas", "SQL"],
+        "missing_skills": ["Scikit-learn", "Power BI"],
+        "additional_skills_to_learn": ["Git", "Linux basics"]
+      }
+    ],
+    "recommended_tech_stacks": [
+      {
+        "stack": "Python data stack (Pandas, Numpy, Scikit-learn)",
+        "reason": "Standard stack used in most entry-level data analyst and data science roles."
+      }
+    ],
+    "career_clarity_summary": {
+      "primary_alignment": "Data Science",
+      "aligned_roles": ["Data Analyst", "Data Engineer"],
+      "roles_to_avoid": ["Pure UI/UX or graphic design roles"],
+      "reasoning": "Alignment inferred from your current skills and areas of interest."
+    },
+    "weekly_schedule": [
+      {
+        "week": 1,
+        "focus": "Statistics & Probability fundamentals",
+        "topics": ["Descriptive stats", "Probability distributions", "Hypothesis testing"],
+        "practice_tasks": ["Work through 3 Kaggle notebooks", "Summarize each concept in your own words"],
+        "checkpoints": ["Able to explain mean/median/mode and when each is useful", "Pushed notes to GitHub"]
+      }
+    ]
+  }
+}
+```
+
+---
+
+## POST /guidance/role-roadmap
+
+Generate a personalized, phase-by-phase learning roadmap for a specific job role. This endpoint compares your current skills against the requirements for the role you want, calculates a readiness score, and produces a structured plan with learning phases, project ideas, and a realistic timeline.
+
+**Auth:** Not required
+
+**Content-Type:** `application/json`
+
+### Request Parameters
+
+<ParamField body="target_role" type="string" required>
+  The job role you want to prepare for. Use a clear, specific title such as
+  `"Frontend Developer"`, `"Data Scientist"`, or `"Cybersecurity Analyst"`.
+  The AI uses this to determine the required skill set and tailor the roadmap.
+</ParamField>
+
+<ParamField body="current_skills" type="string[]" required>
+  An array of your current technical skills as plain strings. For best results,
+  pass the `data.skills.technical` array returned by the resume upload endpoint
+  directly. An empty array is accepted and produces a full beginner roadmap.
+</ParamField>
+
+<ParamField body="experience_level" type="string" default="fresher">
+  Your current experience level. Accepted values: `fresher`, `junior`, `mid`.
+  Defaults to `"fresher"` if omitted. This adjusts the depth of the roadmap
+  and the difficulty of recommended projects.
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:8000/guidance/role-roadmap \
+  -H "Content-Type: application/json" \
+  -d '{
+    "target_role": "Full Stack Developer",
+    "current_skills": ["Python", "HTML", "CSS", "Git"],
+    "experience_level": "fresher"
+  }'
+```
+
+### Response Fields
+
+<ResponseField name="roadmap" type="object">
+  The complete role-specific learning roadmap.
+
+  <Expandable title="Expand roadmap fields">
+    <ResponseField name="roadmap.target_role" type="string">
+      The role this roadmap was generated for, echoed back from the request.
+    </ResponseField>
+
+    <ResponseField name="roadmap.match_percentage" type="number">
+      How ready you currently are for the role, as a percentage from 0 to 100.
+      Calculated by comparing your `current_skills` against the role's core
+      requirements.
+    </ResponseField>
+
+    <ResponseField name="roadmap.skills_you_have" type="array">
+      Skills from your `current_skills` list that are relevant to the target
+      role. Each item has `name`, `status` (`"have"`), and `relevance`
+      (`high`, `medium`, or `low`).
+    </ResponseField>
+
+    <ResponseField name="roadmap.skills_to_learn" type="array">
+      Skills you need to acquire to become job-ready for the target role. Each
+      item has `name`, `priority` (`high`, `medium`, or `low`), `reason`
+      explaining why it is needed, and `learning_time` (e.g., `"2 weeks"`).
+    </ResponseField>
+
+    <ResponseField name="roadmap.roadmap_phases" type="array">
+      Ordered learning phases, each building on the last. Every phase includes
+      `phase` (number), `title`, `duration` (e.g., `"4-6 weeks"`), `focus`,
+      `skills` (array), `action_items` (array), `milestone`, and `resources`
+      (array of recommended learning resources).
+    </ResponseField>
+
+    <ResponseField name="roadmap.projects" type="array">
+      Project ideas to build alongside the roadmap. Each project has `title`,
+      `description`, `difficulty` (`beginner`, `intermediate`, or `advanced`),
+      `skills_used`, and `duration`.
+    </ResponseField>
+
+    <ResponseField name="roadmap.estimated_timeline" type="string">
+      Total estimated time to complete the roadmap (e.g., `"12-16 weeks"`),
+      based on the number of phases and your current readiness.
+    </ResponseField>
+
+    <ResponseField name="roadmap.tips" type="array">
+      Actionable tips for staying on track, building a strong portfolio, and
+      preparing for interviews in the target role.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "roadmap": {
+    "target_role": "Full Stack Developer",
+    "match_percentage": 35,
+    "skills_you_have": [
+      { "name": "HTML", "status": "have", "relevance": "high" },
+      { "name": "CSS", "status": "have", "relevance": "high" },
+      { "name": "Python", "status": "have", "relevance": "medium" },
+      { "name": "Git", "status": "have", "relevance": "high" }
+    ],
+    "skills_to_learn": [
+      {
+        "name": "JavaScript",
+        "priority": "high",
+        "reason": "Core language for both frontend interaction and Node.js backend.",
+        "learning_time": "4 weeks"
+      },
+      {
+        "name": "React",
+        "priority": "high",
+        "reason": "Most in-demand frontend framework for full-stack roles.",
+        "learning_time": "3 weeks"
+      },
+      {
+        "name": "REST APIs",
+        "priority": "high",
+        "reason": "Full-stack developers must build and consume APIs daily.",
+        "learning_time": "2 weeks"
+      },
+      {
+        "name": "SQL",
+        "priority": "medium",
+        "reason": "Required for persistent data storage in most web applications.",
+        "learning_time": "2 weeks"
+      },
+      {
+        "name": "Docker",
+        "priority": "low",
+        "reason": "Containerization is a nice-to-have for deployment-aware developers.",
+        "learning_time": "1 week"
+      }
+    ],
+    "roadmap_phases": [
+      {
+        "phase": 1,
+        "title": "Foundation Phase",
+        "duration": "4-6 weeks",
+        "focus": "Master JavaScript and React fundamentals",
+        "skills": ["JavaScript", "React", "REST APIs"],
+        "action_items": [
+          "Complete a JavaScript fundamentals course (MDN or The Odin Project)",
+          "Build 3 small interactive UI components in React",
+          "Consume a public REST API and display the data"
+        ],
+        "milestone": "Build a weather or movie search app using React and a public API",
+        "resources": ["MDN Web Docs", "React official docs", "JSONPlaceholder for practice APIs"]
+      },
+      {
+        "phase": 2,
+        "title": "Backend Integration Phase",
+        "duration": "4-6 weeks",
+        "focus": "Build and connect your own backend API",
+        "skills": ["Python (FastAPI or Django)", "SQL", "MongoDB"],
+        "action_items": [
+          "Create a CRUD REST API using FastAPI",
+          "Connect your React frontend to the backend",
+          "Add JWT-based authentication"
+        ],
+        "milestone": "A working full-stack app with authentication deployed on a free hosting platform",
+        "resources": ["FastAPI official docs", "SQLite for beginners", "Render.com free tier"]
+      },
+      {
+        "phase": 3,
+        "title": "Job Ready Phase",
+        "duration": "2-4 weeks",
+        "focus": "Polish portfolio and prepare for interviews",
+        "skills": ["System Design Basics", "Problem Solving", "Communication"],
+        "action_items": [
+          "Solve 30 LeetCode Easy/Medium problems",
+          "Write a README for every GitHub project",
+          "Apply to 10+ companies and prepare for technical rounds"
+        ],
+        "milestone": "Land your first job!"
+      }
+    ],
+    "projects": [
+      {
+        "title": "Blog Platform",
+        "description": "Full-stack blog with user authentication, markdown editor, and public reading view.",
+        "difficulty": "beginner",
+        "skills_used": ["React", "FastAPI", "SQL", "JWT"],
+        "duration": "2 weeks"
+      },
+      {
+        "title": "E-commerce Store",
+        "description": "Product catalog with cart, checkout, and an admin panel for inventory management.",
+        "difficulty": "intermediate",
+        "skills_used": ["React", "Node.js", "MongoDB", "REST APIs"],
+        "duration": "3 weeks"
+      }
+    ],
+    "estimated_timeline": "12-16 weeks",
+    "tips": [
+      "Focus on building projects that demonstrate Full Stack Developer skills",
+      "Contribute to open source to gain real-world experience",
+      "Network with professionals on LinkedIn in your target role",
+      "Keep your GitHub active with consistent commits throughout the roadmap"
+    ]
+  }
+}
+```
+
+---
+
+<Tip>
+  Use the `data.skills.technical` array from your resume upload response
+  directly as the `current_skills` value. This ensures the roadmap is generated
+  from the exact skills Resume Insight detected on your resume, giving you the
+  most accurate gap analysis.
+</Tip>

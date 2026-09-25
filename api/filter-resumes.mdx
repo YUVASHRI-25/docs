@@ -1,0 +1,346 @@
+---
+title: "Filter Resumes API: Bulk Screening with Criteria"
+sidebarTitle: "Filter Resumes"
+description: "Upload and screen multiple resumes using academic, skill, and ATS filters. Choose between a batch endpoint and real-time Server-Sent Event streaming."
+---
+
+The Filter Resumes endpoints give trainers two ways to screen large batches of candidate resumes against a defined set of criteria: a standard batch endpoint that returns all results once every file is processed, and a real-time streaming endpoint that pushes each result to your client the moment it is ready using Server-Sent Events (SSE). Both endpoints accept the same filter parameters so you can switch between modes without changing your form data.
+
+<Note>
+  Both endpoints require an `Authorization: Bearer <token>` header. The authenticated account must have `role == "trainer"`. Requests from job-seeker or admin accounts will receive a `403 Forbidden` response.
+</Note>
+
+---
+
+## POST /admin/filter\_uploaded\_resumes
+
+Upload a batch of resume files and receive a single JSON response containing every candidate who passed all specified filters. The server processes each file synchronously before returning, so this endpoint is best suited for smaller batches (up to ~20 files) where you do not need live progress feedback.
+
+**Content-Type:** `multipart/form-data`
+
+### Request Parameters
+
+<ParamField body="files" type="file[]" required>
+  One or more resume files to screen. Accepted formats: **PDF**, **DOCX**, **DOC**. Send each file as a separate `files` field in the form.
+</ParamField>
+
+<ParamField body="cgpa" type="float">
+  Minimum CGPA threshold (e.g., `7.5`). Resumes with a CGPA below this value are excluded.
+</ParamField>
+
+<ParamField body="cgpa_max" type="float">
+  Maximum CGPA threshold. Use together with `cgpa` to define a CGPA range.
+</ParamField>
+
+<ParamField body="tenth" type="float">
+  Minimum 10th grade percentage (e.g., `75.0`). Resumes below this are excluded.
+</ParamField>
+
+<ParamField body="tenth_max" type="float">
+  Maximum 10th grade percentage. Use with `tenth` to define a range.
+</ParamField>
+
+<ParamField body="twelfth" type="float">
+  Minimum 12th grade/HSC percentage.
+</ParamField>
+
+<ParamField body="twelfth_max" type="float">
+  Maximum 12th grade/HSC percentage.
+</ParamField>
+
+<ParamField body="ats" type="float">
+  Minimum ATS score (0–100). Resumes scored below this value are excluded.
+</ParamField>
+
+<ParamField body="skills" type="string">
+  Comma-separated list of required technical skills (e.g., `"Python,Django,REST"`). A resume must contain **all** listed skills to pass this filter.
+</ParamField>
+
+<ParamField body="language" type="string">
+  A spoken or programming language the candidate must list (e.g., `"Tamil"` or `"Java"`).
+</ParamField>
+
+<ParamField body="department" type="string">
+  Department or stream keyword to match against the candidate's degree (e.g., `"Computer Science"`).
+</ParamField>
+
+<ParamField body="degree" type="string">
+  Degree keyword to match (e.g., `"B.E"` or `"M.Tech"`). Partial matches are accepted.
+</ParamField>
+
+<ParamField body="area_of_interest" type="string">
+  Comma-separated list of interest areas (e.g., `"Machine Learning,Web Development"`). At least one must match the candidate's listed interests.
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:8000/admin/filter_uploaded_resumes \
+  -H "Authorization: Bearer <your_token>" \
+  -F "files=@resume_alice.pdf" \
+  -F "files=@resume_bob.docx" \
+  -F "files=@resume_carol.pdf" \
+  -F "cgpa=7.0" \
+  -F "cgpa_max=10.0" \
+  -F "twelfth=70.0" \
+  -F "ats=60" \
+  -F "skills=Python,Machine Learning" \
+  -F "department=Computer Science" \
+  -F "degree=B.E"
+```
+
+### Response Fields
+
+<ResponseField name="count" type="integer">
+  Total number of resumes that passed all filters.
+</ResponseField>
+
+<ResponseField name="results" type="array">
+  Array of matched resume objects. Each object contains the following fields:
+
+  <Expandable title="Resume object fields">
+    <ResponseField name="filename" type="string">
+      Original filename of the uploaded resume.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Candidate's full name extracted from the resume.
+    </ResponseField>
+    <ResponseField name="email" type="string">
+      Candidate's email address.
+    </ResponseField>
+    <ResponseField name="phone" type="string">
+      Candidate's phone number.
+    </ResponseField>
+    <ResponseField name="ats_score" type="number">
+      ATS compatibility score between 0 and 100.
+    </ResponseField>
+    <ResponseField name="education" type="object">
+      Extracted education details including `10th`, `12th`, and `bachelor` sub-objects with marks, CGPA, institution, and degree.
+    </ResponseField>
+    <ResponseField name="skills" type="object">
+      Skills block with `technical`, `soft`, and `area_of_interest` arrays.
+    </ResponseField>
+    <ResponseField name="languages" type="array">
+      List of spoken/known languages.
+    </ResponseField>
+    <ResponseField name="area_of_interest" type="array">
+      Candidate's listed areas of professional interest.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "count": 2,
+  "results": [
+    {
+      "filename": "resume_alice.pdf",
+      "name": "Alice Ramesh",
+      "email": "alice@example.com",
+      "phone": "+91 9876543210",
+      "ats_score": 78,
+      "education": {
+        "10th": { "percentage": "92.4%", "board": "CBSE" },
+        "12th": { "percentage": "88.0%", "board": "CBSE" },
+        "bachelor": {
+          "degree": "B.E. Computer Science",
+          "institution": "Anna University",
+          "cgpa": "8.6"
+        }
+      },
+      "skills": {
+        "technical": ["Python", "Machine Learning", "TensorFlow", "SQL"],
+        "soft": ["Communication", "Team Leadership"],
+        "area_of_interest": ["Machine Learning", "Data Science"]
+      },
+      "languages": ["English", "Tamil"],
+      "area_of_interest": ["Machine Learning", "Data Science"]
+    },
+    {
+      "filename": "resume_bob.docx",
+      "name": "Bob Krishnan",
+      "email": "bob@example.com",
+      "phone": "+91 9123456780",
+      "ats_score": 65,
+      "education": {
+        "10th": { "percentage": "85.0%", "board": "State Board" },
+        "12th": { "percentage": "78.5%", "board": "State Board" },
+        "bachelor": {
+          "degree": "B.E. Computer Science",
+          "institution": "VIT University",
+          "cgpa": "7.9"
+        }
+      },
+      "skills": {
+        "technical": ["Python", "Machine Learning", "Scikit-Learn"],
+        "soft": ["Problem Solving"],
+        "area_of_interest": ["Machine Learning", "Web Development"]
+      },
+      "languages": ["English"],
+      "area_of_interest": ["Machine Learning"]
+    }
+  ]
+}
+```
+
+---
+
+## POST /admin/filter\_uploaded\_resumes\_stream
+
+Identical filtering logic to the batch endpoint above, but the server emits results incrementally using **Server-Sent Events (SSE)** as each file is processed. This lets your UI display a live progress bar and show matched candidates immediately — without waiting for the entire batch to finish.
+
+**Content-Type:** `multipart/form-data`  
+**Accept:** `text/event-stream`
+
+<Note>
+  Add `Accept: text/event-stream` to your request headers. The connection stays open while the server processes files and closes automatically when all files have been evaluated.
+</Note>
+
+### SSE Event Format
+
+Each event is a JSON-encoded `data:` line followed by a blank line:
+
+```
+data: {"progress": 1, "total": 3, "processed": 1, "latest_filename": "resume_alice.pdf", ...}\n\n
+data: {"progress": 2, "total": 3, "processed": 1, "latest_filename": "resume_bob.docx", ...}\n\n
+data: {"done": true, "results": [...], "count": 2}\n\n
+```
+
+### Progress Event Fields
+
+<ResponseField name="progress" type="integer">
+  Index of the file just processed (1-based counter over all submitted files).
+</ResponseField>
+
+<ResponseField name="total" type="integer">
+  Total number of files submitted for processing.
+</ResponseField>
+
+<ResponseField name="processed" type="integer">
+  Number of files that have **passed** the filters so far.
+</ResponseField>
+
+<ResponseField name="latest_filename" type="string">
+  Filename of the most recently processed resume.
+</ResponseField>
+
+<ResponseField name="latest_name" type="string">
+  Candidate name extracted from the most recently processed resume, if it passed filters.
+</ResponseField>
+
+<ResponseField name="results_so_far" type="array">
+  Cumulative array of all matched resume objects up to this point. Same structure as the `results` array in the batch endpoint.
+</ResponseField>
+
+### Final Event Fields
+
+<ResponseField name="done" type="boolean">
+  Always `true` on the final event. Signals that all files have been processed.
+</ResponseField>
+
+<ResponseField name="results" type="array">
+  Complete array of all matched resume objects.
+</ResponseField>
+
+<ResponseField name="count" type="integer">
+  Total number of matched resumes.
+</ResponseField>
+
+### JavaScript Example
+
+```javascript
+const form = new FormData();
+form.append("files", resumeFile1);
+form.append("files", resumeFile2);
+form.append("cgpa", "7.0");
+form.append("skills", "Python,Machine Learning");
+form.append("department", "Computer Science");
+
+const response = await fetch("http://localhost:8000/admin/filter_uploaded_resumes_stream", {
+  method: "POST",
+  headers: {
+    Authorization: "Bearer <your_token>",
+    Accept: "text/event-stream",
+  },
+  body: form,
+});
+
+const reader = response.body.getReader();
+const decoder = new TextDecoder();
+
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+
+  const chunk = decoder.decode(value);
+  const lines = chunk.split("\n\n").filter(Boolean);
+
+  for (const line of lines) {
+    if (!line.startsWith("data:")) continue;
+    const payload = JSON.parse(line.replace("data: ", ""));
+
+    if (payload.done) {
+      console.log("All done! Matched candidates:", payload.count);
+      console.log(payload.results);
+    } else {
+      console.log(`Progress: ${payload.progress}/${payload.total}`);
+      updateUI(payload.results_so_far);
+    }
+  }
+}
+```
+
+### Example SSE Payloads
+
+**Progress event (file matched):**
+
+```json
+{
+  "progress": 1,
+  "total": 3,
+  "processed": 1,
+  "latest_filename": "resume_alice.pdf",
+  "latest_name": "Alice Ramesh",
+  "results_so_far": [
+    {
+      "filename": "resume_alice.pdf",
+      "name": "Alice Ramesh",
+      "email": "alice@example.com",
+      "ats_score": 78,
+      "skills": { "technical": ["Python", "Machine Learning"] }
+    }
+  ]
+}
+```
+
+**Progress event (file filtered out):**
+
+```json
+{
+  "progress": 2,
+  "total": 3,
+  "processed": 1,
+  "latest_filename": "resume_bob.docx",
+  "latest_name": null,
+  "results_so_far": [...]
+}
+```
+
+**Final event:**
+
+```json
+{
+  "done": true,
+  "count": 2,
+  "results": [
+    { "filename": "resume_alice.pdf", "name": "Alice Ramesh", "ats_score": 78, "..." : "..." },
+    { "filename": "resume_carol.pdf", "name": "Carol Nair",   "ats_score": 71, "..." : "..." }
+  ]
+}
+```
+
+<Note>
+  The SSE stream closes automatically after the final `done: true` event is sent. You do not need to disconnect manually — but always close your reader when `done` is `true` to free browser resources.
+</Note>

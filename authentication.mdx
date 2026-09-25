@@ -1,0 +1,281 @@
+---
+title: "Authenticate and Manage Sessions with Resume Insight"
+sidebarTitle: "Authentication"
+description: "Learn how to register, log in, and attach JWT Bearer tokens to authenticate every API request you make to the Resume Insight platform."
+---
+
+Resume Insight uses JSON Web Tokens (JWT) to secure its API. When you log in, the server issues a signed Bearer token that encodes your user identity and role. You include this token in the `Authorization` header of every request that requires authentication. Tokens are stateless — the server verifies the signature on each request without storing session data, which means you must keep your token safe on the client side and discard it when you log out.
+
+## Register
+
+Create a new account by sending your email and password to `POST /auth/register`. The `role` field controls which parts of the API you can access — choose carefully, as your role determines what you can do throughout the platform.
+
+<ParamField body="email" type="string" required>
+  Your email address. Used as your unique identifier across the platform. Email lookup is case-insensitive, so `Alex@Example.com` and `alex@example.com` resolve to the same account.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  Your account password. Must be a non-empty string. Passwords are hashed with bcrypt before storage — they are never stored in plain text.
+</ParamField>
+
+<ParamField body="role" type="string" default="user">
+  The role to assign to your account. Accepted values are `user` (job seeker), `trainer` (placement coordinator), or `admin` (HR professional). Defaults to `user` if omitted.
+</ParamField>
+
+<Tabs>
+  <Tab title="Request">
+    ```bash title="curl — POST /auth/register"
+    curl -X POST http://localhost:8000/auth/register \
+      -H "Content-Type: application/json" \
+      -d '{
+        "email": "alex@example.com",
+        "password": "MyStr0ngP@ss",
+        "role": "user"
+      }'
+    ```
+  </Tab>
+  <Tab title="Response">
+    ```json title="201 Created"
+    {
+      "status": "success",
+      "message": "User registered ✅",
+      "role": "user",
+      "user": {
+        "_id": "64f3a1b2c9e77d001e2a5678",
+        "email": "alex@example.com",
+        "role": "user"
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+  If an account already exists for the email you provide, the API returns a `409 Conflict` error. Each email address can only be registered once.
+</Note>
+
+---
+
+## Log In
+
+Exchange your email and password for a JWT access token using `POST /auth/login`. Store the returned `access_token` — you need it to call any protected endpoint.
+
+<ParamField body="email" type="string" required>
+  The email address you registered with.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  Your account password.
+</ParamField>
+
+<Tabs>
+  <Tab title="Request">
+    ```bash title="curl — POST /auth/login"
+    curl -X POST http://localhost:8000/auth/login \
+      -H "Content-Type: application/json" \
+      -d '{
+        "email": "alex@example.com",
+        "password": "MyStr0ngP@ss"
+      }'
+    ```
+  </Tab>
+  <Tab title="Response">
+    ```json title="200 OK"
+    {
+      "status": "success",
+      "message": "Login successful as user ✅",
+      "role": "user",
+      "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2NGYzYTFiMmM5ZTc3ZDAwMWUyYTU2NzgiLCJlbWFpbCI6ImFsZXhAZXhhbXBsZS5jb20iLCJyb2xlIjoidXNlciIsImV4cCI6MTY5ODAwMDAwMH0.abc123",
+      "token_type": "bearer",
+      "user": {
+        "_id": "64f3a1b2c9e77d001e2a5678",
+        "email": "alex@example.com",
+        "role": "user"
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+The response includes the following fields:
+
+<ResponseField name="access_token" type="string">
+  Your signed JWT Bearer token. Pass this value in the `Authorization` header of every protected request.
+</ResponseField>
+
+<ResponseField name="token_type" type="string">
+  Always `"bearer"`. Use this as the scheme prefix when constructing your `Authorization` header.
+</ResponseField>
+
+<ResponseField name="role" type="string">
+  Your account role (`user`, `trainer`, or `admin`). The API enforces role-based access on protected endpoints, so make sure you log in with the correct account.
+</ResponseField>
+
+<ResponseField name="user" type="object">
+  A sanitised user object containing your account `_id`, `email`, and `role`. Your password is never returned.
+</ResponseField>
+
+---
+
+## Using Your Token
+
+Include your access token in the `Authorization` header of every protected API call, using the `Bearer` scheme.
+
+```text
+Authorization: Bearer <your_access_token>
+```
+
+Here is a complete example that calls the protected resume upload endpoint:
+
+```bash title="curl — Authenticated request example"
+curl -X POST http://localhost:8000/user/upload_resume \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -F "email=alex@example.com" \
+  -F "file=@/path/to/my_resume.pdf"
+```
+
+<Warning>
+  Never include your access token in a URL query parameter or expose it in client-side code that is publicly visible. Treat your token like a password — if it is compromised, log out immediately and log in again to obtain a new one.
+</Warning>
+
+---
+
+## Google Sign-In
+
+If your institutional email address ends in `@bitsathy.ac.in`, you can authenticate using Google Sign-In instead of a password. Obtain a Google ID token from the Google OAuth flow in the frontend, then pass it to `POST /auth/google_signin`.
+
+<ParamField body="token" type="string" required>
+  The Google ID token issued by Google OAuth after the user completes the sign-in flow in the browser. This is a short-lived token issued directly by Google — it is not the same as the Resume Insight JWT access token.
+</ParamField>
+
+```bash title="curl — POST /auth/google_signin"
+curl -X POST http://localhost:8000/auth/google_signin \
+  -H "Content-Type: application/json" \
+  -d '{"token": "<google_id_token>"}'
+```
+
+```json title="Successful Google Sign-In response"
+{
+  "status": "success",
+  "message": "Google Sign-In successful as user ✅",
+  "role": "user",
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "user": {
+    "_id": "64f3a1b2c9e77d001e2a5678",
+    "email": "alex@bitsathy.ac.in",
+    "role": "user"
+  }
+}
+```
+
+<Note>
+  Google Sign-In is restricted to **@bitsathy.ac.in** institutional email addresses. Accounts created via Google Sign-In are always assigned the `user` role — you cannot use Google Sign-In to register as a `trainer` or `admin`. Use the standard email/password registration flow for those roles.
+</Note>
+
+---
+
+## Verify Token
+
+You can check whether a token is still valid — and retrieve the identity it encodes — by calling `GET /auth/verify_token`. Pass your token in the `Authorization` header.
+
+```bash title="curl — GET /auth/verify_token"
+curl -X GET http://localhost:8000/auth/verify_token \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+```json title="Valid token response"
+{
+  "status": "success",
+  "message": "Token is valid ✅",
+  "data": {
+    "sub": "64f3a1b2c9e77d001e2a5678",
+    "email": "alex@example.com",
+    "role": "user",
+    "exp": 1698000000
+  }
+}
+```
+
+This endpoint is useful for confirming your session is still active before making a series of API calls, or for extracting the `role` embedded in the token without decoding the JWT locally.
+
+---
+
+## Logout
+
+Call `POST /auth/logout` to end your session. The server acknowledges the request and you must discard the token on your end.
+
+```bash title="curl — POST /auth/logout"
+curl -X POST http://localhost:8000/auth/logout \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+```json title="Logout response"
+{
+  "status": "success",
+  "message": "Logged out successfully ✅"
+}
+```
+
+<Info>
+  After calling `/auth/logout`, delete the token from your application's local storage or cookie jar. Because Resume Insight uses stateless JWTs, the token technically remains cryptographically valid until its expiry time — discarding it on the client side is what actually ends your session.
+</Info>
+
+---
+
+## Common Auth Errors
+
+<Accordion title="401 — Invalid credentials or token">
+  You receive a `401 Unauthorized` response in two situations:
+
+  - **Login failed:** The email was not found, or the password did not match. Double-check your credentials and try again.
+  - **Token invalid or expired:** The `Authorization` header was missing, malformed, or the token has expired. Log in again via `POST /auth/login` to obtain a fresh token.
+
+  ```json title="401 response body"
+  {
+    "detail": "Invalid email or password ❌"
+  }
+  ```
+</Accordion>
+
+<Accordion title="403 — Insufficient permissions">
+  You receive a `403 Forbidden` response when your account role does not grant access to the endpoint you called. For example, calling a trainer-only endpoint (`/filter_uploaded_resumes`) with a `user` token will return this error.
+
+  ```json title="403 response body"
+  {
+    "detail": "Trainer role required to access this endpoint"
+  }
+  ```
+
+  Register a new account with the appropriate role, or contact your platform administrator to update your role.
+</Accordion>
+
+<Accordion title="409 — Email already registered">
+  You receive a `409 Conflict` response when you attempt to register with an email address that is already associated with an existing account.
+
+  ```json title="409 response body"
+  {
+    "detail": "User already exists ❌"
+  }
+  ```
+
+  Log in with your existing account instead, or use a different email address to register a new one.
+</Accordion>
+
+<Accordion title="422 — Validation error">
+  You receive a `422 Unprocessable Entity` response when your request body is missing required fields or contains values of the wrong type. FastAPI returns a detailed list of validation errors so you can identify exactly which field caused the problem.
+
+  ```json title="422 response body"
+  {
+    "detail": [
+      {
+        "loc": ["body", "email"],
+        "msg": "field required",
+        "type": "value_error.missing"
+      }
+    ]
+  }
+  ```
+
+  Check that your `Content-Type` header is set to `application/json` and that your request body includes all required fields with the correct data types.
+</Accordion>

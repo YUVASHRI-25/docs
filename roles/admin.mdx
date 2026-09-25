@@ -1,0 +1,322 @@
+---
+title: "HR Admin Dashboard: AI-Assisted Candidate Evaluation"
+sidebarTitle: "HR Admin"
+description: "Deeply evaluate individual candidates with AI-powered resume parsing, ATS scoring, GitHub activity, LeetCode stats, and CodeChef ratings — all in one call."
+---
+
+HR admins use Resume Insight to perform thorough, structured evaluations of individual candidates. Rather than switching between multiple tools to check a candidate's resume quality, coding activity, and competitive programming profile, the Admin dashboard brings all of that together in a single request. You upload the resume file, optionally pass the candidate's GitHub, LeetCode, and CodeChef usernames, and receive a consolidated report covering every dimension of the candidate's technical profile.
+
+## What You Can Do
+
+<CardGroup cols={2}>
+  <Card title="Individual Resume Analysis" icon="file-magnifying-glass">
+    Parse any resume and extract structured data — name, education, skills, certifications, and projects — along with an ATS score and role prediction.
+  </Card>
+  <Card title="Coding Profile Review" icon="code">
+    Fetch and analyze the candidate's GitHub repositories, pull request history, and contribution activity to assess real-world development engagement.
+  </Card>
+  <Card title="ATS Score Check" icon="chart-bar">
+    Instantly see how well a resume is optimized for Applicant Tracking Systems, with a detailed breakdown across skills, formatting, keyword density, and contact completeness.
+  </Card>
+  <Card title="Skill-to-Role Matching" icon="bullseye">
+    The AI predicts the most suitable role for the candidate based on their resume and suggests additional skills they should acquire to be more competitive.
+  </Card>
+  <Card title="Competitive Programming Evaluation" icon="ranking-star">
+    Pull the candidate's LeetCode and CodeChef profiles to review their problem-solving volume, difficulty distribution, contest ratings, and global rankings.
+  </Card>
+  <Card title="Certificate Validation" icon="certificate">
+    View all certifications extracted from the resume to quickly verify relevant credentials without manual cross-checking.
+  </Card>
+</CardGroup>
+
+## Analyzing a Candidate
+
+The `POST /analyze_all` endpoint is your primary tool as an HR admin. It accepts one resume file plus optional query parameters for GitHub, LeetCode, and CodeChef usernames. You get back a single JSON response containing every platform's data in clearly labeled sections.
+
+**Full curl example — resume + all three platforms:**
+
+```bash
+curl -X POST "http://localhost:8000/analyze_all?github=alexjohnson&leetcode=alex_lc&codechef=alex_cc" \
+  -H "Authorization: Bearer <your_admin_token>" \
+  -F "file=@/path/to/candidate_resume.pdf"
+```
+
+**Query parameters:**
+
+<ParamField query="github" type="string">
+  GitHub username or full profile URL (e.g., `alexjohnson` or `https://github.com/alexjohnson`). The system extracts the username automatically from a URL.
+</ParamField>
+
+<ParamField query="leetcode" type="string">
+  LeetCode username (e.g., `alex_lc`).
+</ParamField>
+
+<ParamField query="codechef" type="string">
+  CodeChef username (e.g., `alex_cc`).
+</ParamField>
+
+<ParamField query="token" type="string">
+  A personal GitHub access token. Use this if the server's default token is hitting GitHub's rate limits. See the [GitHub Analysis](#github-analysis) section for details.
+</ParamField>
+
+**Response structure:**
+
+```json
+{
+  "resume": {
+    "data": {
+      "name": "Alex Johnson",
+      "email": "alex@example.com",
+      "phone": "+91 9876543210",
+      "education": {
+        "10th": { "school": "ABC High School", "percentage": "92%" },
+        "12th": { "school": "XYZ Junior College", "percentage": "88%" },
+        "bachelor": { "degree": "B.E. Computer Science", "college": "State Engineering College", "cgpa": "8.6" }
+      },
+      "skills": {
+        "technical": ["Python", "React", "Node.js", "MongoDB", "Docker"],
+        "programming_languages": ["Python", "JavaScript", "Java"],
+        "area_of_interest": ["Full Stack Development", "Cloud Computing"]
+      },
+      "certifications": ["AWS Cloud Practitioner", "Meta React Developer"],
+      "projects": [
+        {
+          "title": "Inventory Management System",
+          "description": "Developed a real-time inventory dashboard with REST APIs and MongoDB",
+          "technologies": ["Node.js", "React", "MongoDB"]
+        }
+      ]
+    },
+    "ats_score": 81,
+    "ats_breakdown": {
+      "skills_match": 88,
+      "formatting": 76,
+      "keyword_density": 79,
+      "contact_info": 100
+    },
+    "word_count": 438
+  },
+  "github": {
+    "username": "alexjohnson",
+    "github_metrics": {
+      "total_original_repos": 18,
+      "total_forked_repos": 5,
+      "total_contributions_1yr": 342,
+      "total_prs_submitted": 27,
+      "prs_merged": 19,
+      "pr_acceptance_rate": 70.4,
+      "avg_pr_size_lines": 84,
+      "avg_time_to_merge_days": 1.8
+    }
+  },
+  "leetcode": {
+    "profile": {
+      "Username": "alex_lc",
+      "Total_Solved": "312",
+      "Easy": "120",
+      "Medium": "158",
+      "Hard": "34",
+      "Ranking": 48920,
+      "Rating": 3,
+      "Languages": ["Python", "Java", "C++"]
+    },
+    "analysis": {
+      "sentiment": "neutral",
+      "reason": "Good progress with 312 problems solved. Keep going to reach 2000+ problems!",
+      "metrics": {
+        "problem_distribution": "Easy: 38.5%, Medium: 50.6%, Hard: 10.9%",
+        "total_problems": 312,
+        "languages_used": 3,
+        "difficulty_rating": 1.72
+      }
+    },
+    "activity_graph": [
+      { "date": "2025-06-01", "count": 4 },
+      { "date": "2025-06-02", "count": 2 }
+    ]
+  },
+  "codechef": {
+    "profile": {
+      "Profile_URL": "https://www.codechef.com/users/alex_cc",
+      "Rating": 1854,
+      "Star_Rating": "4★",
+      "Global_Rank": 12430,
+      "Country_Rank": 3870,
+      "Badges": ["Div. 2 Specialist", "Problem Solver"],
+      "Total_Solved": 210,
+      "Learning_Paths": [
+        { "name": "Data Structures & Algorithms", "percentage": 72 }
+      ],
+      "Practice_Paths": [
+        { "name": "Practice: Beginner", "percentage": 100 },
+        { "name": "Practice: Easy", "percentage": 88 }
+      ]
+    }
+  }
+}
+```
+
+<Note>
+  The `analyze_all` endpoint returns partial results when one or more platform usernames fail to resolve or return an error. For example, if the GitHub token is rate-limited, the response will still include `resume`, `leetcode`, and `codechef` sections. Each failed platform appears as a `*_error` key (e.g., `"github_error"`) alongside whatever data was successfully fetched.
+</Note>
+
+## GitHub Analysis
+
+When you pass a `github` username, Resume Insight uses the GitHub GraphQL API and REST API to fetch the candidate's public development activity. The following metrics are returned inside `github.github_metrics`:
+
+<ResponseField name="total_original_repos" type="number">
+  Number of repositories the candidate created themselves (not forks).
+</ResponseField>
+
+<ResponseField name="total_forked_repos" type="number">
+  Number of repositories forked from other projects.
+</ResponseField>
+
+<ResponseField name="total_contributions_1yr" type="number">
+  Total contributions (commits, PRs, issues, reviews) made in the past 12 months.
+</ResponseField>
+
+<ResponseField name="total_prs_submitted" type="number">
+  Total number of pull requests the candidate has submitted across all public repositories.
+</ResponseField>
+
+<ResponseField name="prs_merged" type="number">
+  How many of those pull requests were merged.
+</ResponseField>
+
+<ResponseField name="pr_acceptance_rate" type="number">
+  Percentage of submitted PRs that were merged (`prs_merged / total_prs_submitted × 100`).
+</ResponseField>
+
+<ResponseField name="avg_pr_size_lines" type="number">
+  Average number of lines changed (additions + deletions) across merged PRs.
+</ResponseField>
+
+<ResponseField name="avg_time_to_merge_days" type="number">
+  Average number of days between PR creation and merge across all merged PRs.
+</ResponseField>
+
+<Tip>
+  GitHub's API enforces rate limits. If you run many candidate evaluations in quick succession, pass the candidate's GitHub token (or a dedicated evaluation token) as the `?token=` query parameter in the request. This uses that token's rate limit allocation rather than the server's default token.
+</Tip>
+
+## LeetCode Analysis
+
+When you pass a `leetcode` username, Resume Insight fetches the candidate's full submission stats and generates a performance analysis. The response contains three sections:
+
+<Expandable title="profile — raw stats">
+
+<ResponseField name="Username" type="string">
+  The candidate's LeetCode username as returned by the API.
+</ResponseField>
+
+<ResponseField name="Total_Solved" type="string">
+  Total number of problems the candidate has accepted.
+</ResponseField>
+
+<ResponseField name="Easy / Medium / Hard" type="string">
+  Accepted problem count for each difficulty tier.
+</ResponseField>
+
+<ResponseField name="Ranking" type="number">
+  The candidate's global ranking on LeetCode (lower is better).
+</ResponseField>
+
+<ResponseField name="Rating" type="number">
+  The candidate's star rating on LeetCode (0–5).
+</ResponseField>
+
+<ResponseField name="Languages" type="array">
+  List of programming languages the candidate has used to solve problems.
+</ResponseField>
+
+</Expandable>
+
+<Expandable title="analysis — interpreted performance">
+
+<ResponseField name="sentiment" type="string">
+  `"positive"` (2000+ problems), `"neutral"` (500–1999), or `"negative"` (under 500).
+</ResponseField>
+
+<ResponseField name="reason" type="string">
+  A plain-English summary of the candidate's standing, with specific suggestions if the sentiment is not positive.
+</ResponseField>
+
+<ResponseField name="metrics.problem_distribution" type="string">
+  Percentage breakdown of easy/medium/hard problems as a formatted string.
+</ResponseField>
+
+<ResponseField name="metrics.difficulty_rating" type="number">
+  Weighted average difficulty across all problems solved (Easy=1, Medium=2, Hard=3).
+</ResponseField>
+
+<ResponseField name="metrics.languages_used" type="number">
+  Number of distinct languages the candidate has coded in.
+</ResponseField>
+
+</Expandable>
+
+<Expandable title="activity_graph — submission calendar">
+
+An array of daily submission counts covering the candidate's recent activity. Each entry has a `date` (ISO format) and a `count` representing the number of submissions made on that day. Use this to visualize consistency of practice over time.
+
+</Expandable>
+
+## CodeChef Analysis
+
+When you pass a `codechef` username, Resume Insight scrapes the candidate's public CodeChef profile and returns the following data inside `codechef.profile`:
+
+<ResponseField name="Rating" type="number">
+  The candidate's current CodeChef rating (e.g., `1854`).
+</ResponseField>
+
+<ResponseField name="Star_Rating" type="string">
+  Star tier corresponding to the rating, e.g., `"4★"` or `"3★"`.
+</ResponseField>
+
+<ResponseField name="Global_Rank" type="number">
+  The candidate's rank among all CodeChef users worldwide.
+</ResponseField>
+
+<ResponseField name="Country_Rank" type="number">
+  The candidate's rank within their country.
+</ResponseField>
+
+<ResponseField name="Badges" type="array">
+  List of badges earned on CodeChef, such as `"Div. 2 Specialist"` or `"Problem Solver"`.
+</ResponseField>
+
+<ResponseField name="Total_Solved" type="number">
+  Total number of problems the candidate has solved on CodeChef.
+</ResponseField>
+
+<ResponseField name="Learning_Paths" type="array">
+  Structured learning paths the candidate has started or completed, each with a `name` and a `percentage` completion.
+</ResponseField>
+
+<ResponseField name="Practice_Paths" type="array">
+  Practice problem sets the candidate has attempted, with names and completion percentages.
+</ResponseField>
+
+<Tabs>
+  <Tab title="Strong Candidate Signals">
+    When reviewing CodeChef data, look for:
+    - **Rating ≥ 1800** — indicates consistent contest performance at the 4★ level or above
+    - **Global Rank under 10,000** — places the candidate in the top tier of competitive programmers
+    - **Total Solved > 200** — demonstrates sustained practice beyond contest participation
+    - **Multiple learning path completions** — shows structured self-improvement
+  </Tab>
+  <Tab title="Interpreting Star Ratings">
+    CodeChef star ratings correspond to rough rating bands:
+
+    | Stars | Rating Range | Level |
+    |-------|-------------|-------|
+    | ⭐ 1★ | Up to 1399 | Beginner |
+    | ⭐⭐ 2★ | 1400–1599 | Intermediate |
+    | ⭐⭐⭐ 3★ | 1600–1799 | Intermediate+ |
+    | ⭐⭐⭐⭐ 4★ | 1800–1999 | Advanced |
+    | ⭐⭐⭐⭐⭐ 5★ | 2000–2199 | Expert |
+    | ⭐⭐⭐⭐⭐⭐ 6★ | 2200–2499 | Expert+ |
+    | ⭐⭐⭐⭐⭐⭐⭐ 7★ | 2500+ | Grandmaster |
+  </Tab>
+</Tabs>

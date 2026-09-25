@@ -1,0 +1,233 @@
+---
+title: "GET /codechef/analyze_codechef — CodeChef Profile Metrics"
+sidebarTitle: "CodeChef"
+description: "GET /codechef/analyze_codechef/{user_input} returns rating, star level, global rank, badges, and problems solved for a CodeChef user."
+---
+
+Resume Insight scrapes a CodeChef user's public profile to return their competitive programming credentials in a structured format — including their current rating, star tier, global and country ranks, total problems solved, earned badges, and progress across CodeChef's learning and practice paths. This endpoint is particularly useful for trainers who want to assess a student's competitive programming depth beyond what a resume shows.
+
+## Endpoint
+
+```
+GET http://localhost:8000/codechef/analyze_codechef/{user_input}
+```
+
+**Authentication:** Not required for this endpoint.
+
+<Note>
+  This endpoint accepts both plain CodeChef usernames and full CodeChef profile
+  URLs. Resume Insight automatically extracts the username from a URL before
+  fetching data.
+</Note>
+
+---
+
+## Path Parameters
+
+<ParamField path="user_input" type="string" required>
+  The CodeChef username or full profile URL for the account you want to analyze.
+
+  **Examples:**
+  - `tourist`
+  - `https://www.codechef.com/users/tourist`
+</ParamField>
+
+---
+
+## Request Example
+
+<Tabs>
+  <Tab title="cURL (username)">
+    ```bash
+    curl -X GET \
+      "http://localhost:8000/codechef/analyze_codechef/tourist"
+    ```
+  </Tab>
+  <Tab title="cURL (full URL)">
+    ```bash
+    curl -X GET \
+      "http://localhost:8000/codechef/analyze_codechef/https%3A%2F%2Fwww.codechef.com%2Fusers%2Ftourist"
+    ```
+  </Tab>
+  <Tab title="Python">
+    ```python
+    import requests
+
+    username = "tourist"
+    response = requests.get(
+        f"http://localhost:8000/codechef/analyze_codechef/{username}"
+    )
+    data = response.json()
+    profile = data["profile"]
+    print(f"Rating: {profile['Rating']} ({profile['Star_Rating']})")
+    print(f"Global Rank: {profile['Global_Rank']}")
+    ```
+  </Tab>
+  <Tab title="JavaScript (fetch)">
+    ```javascript
+    const username = "tourist";
+
+    const response = await fetch(
+      `http://localhost:8000/codechef/analyze_codechef/${username}`
+    );
+    const { profile } = await response.json();
+    console.log(`Rating: ${profile.Rating} (${profile.Star_Rating})`);
+    console.log(`Problems Solved: ${profile.Total_Solved}`);
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Response
+
+A successful `200` response always returns a JSON object with a single top-level
+`profile` key, regardless of whether the underlying fetch succeeded. See
+[Error Handling](#error-handling) below for what happens when the profile cannot
+be retrieved.
+
+<ResponseField name="profile" type="object">
+  All metrics for the requested CodeChef user.
+
+  <ResponseField name="Profile_URL" type="string">
+    The canonical CodeChef profile URL that was scraped, in the form
+    `https://www.codechef.com/users/{username}`.
+  </ResponseField>
+
+  <ResponseField name="Rating" type="number">
+    The user's current CodeChef rating. New or unrated users will have a value
+    of `0`. Higher ratings indicate stronger competitive performance — ratings
+    above 2000 are generally considered expert level.
+  </ResponseField>
+
+  <ResponseField name="Star_Rating" type="string">
+    The star tier label corresponding to the user's rating (e.g., `"1★"`,
+    `"3★"`, `"6★"`, `"7★"`). This is the same badge shown on the CodeChef
+    profile. Returns `"Unrated"` if the account has no rating.
+  </ResponseField>
+
+  <ResponseField name="Global_Rank" type="number">
+    The user's position on CodeChef's global all-time leaderboard. Returns `0`
+    if rank data is unavailable.
+  </ResponseField>
+
+  <ResponseField name="Country_Rank" type="number">
+    The user's position within their country-level leaderboard on CodeChef.
+    Returns `0` if rank data is unavailable.
+  </ResponseField>
+
+  <ResponseField name="Total_Solved" type="number">
+    Total number of unique problems the user has solved on CodeChef.
+  </ResponseField>
+
+  <ResponseField name="Badges" type="array">
+    An array of badge name strings the user has earned on CodeChef (e.g.,
+    `["Problem Setter", "5 Star Coder"]`). Returns an empty array if no badges
+    are found on the profile page.
+  </ResponseField>
+
+  <ResponseField name="Learning_Paths" type="array">
+    An array of learning path objects representing the user's progress in
+    CodeChef's structured learning curriculum. Each item has:
+    - `name` (string) — the name of the learning path topic
+    - `completed_percentage` (number) — completion percentage (0–100)
+  </ResponseField>
+
+  <ResponseField name="Practice_Paths" type="array">
+    An array of practice path objects showing progress in CodeChef's
+    topic-based practice sections. Each item has:
+    - `name` (string) — the name of the practice path
+    - `completed_percentage` (number) — completion percentage (0–100)
+  </ResponseField>
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "profile": {
+    "Profile_URL": "https://www.codechef.com/users/tourist",
+    "Rating": 2817,
+    "Star_Rating": "7★",
+    "Global_Rank": 1,
+    "Country_Rank": 1,
+    "Total_Solved": 548,
+    "Badges": ["Problem Setter", "7 Star Coder"],
+    "Learning_Paths": [
+      { "name": "Data Structures", "completed_percentage": 85 },
+      { "name": "Algorithms", "completed_percentage": 72 }
+    ],
+    "Practice_Paths": [
+      { "name": "Practice Dynamic Programming", "completed_percentage": 60 },
+      { "name": "Practice Graphs", "completed_percentage": 45 }
+    ]
+  }
+}
+```
+
+---
+
+## Error Handling
+
+Unlike most endpoints, `GET /codechef/analyze_codechef/{user_input}` **always
+returns HTTP `200`**, even when the profile cannot be fetched. When a fetch
+failure occurs, the `profile` object is returned with all numeric fields zeroed
+out, all array fields empty, and an additional `error` field explaining what
+went wrong.
+
+This design lets your application render a graceful fallback state rather than
+catching an exception.
+
+### Fallback Response Example
+
+```json
+{
+  "profile": {
+    "Profile_URL": "https://www.codechef.com/users/unknownuser99",
+    "Rating": 0,
+    "Star_Rating": "Unrated",
+    "Global_Rank": 0,
+    "Country_Rank": 0,
+    "Total_Solved": 0,
+    "Badges": [],
+    "Learning_Paths": [],
+    "Practice_Paths": [],
+    "error": "Failed to access CodeChef (status 404). Profile may not exist or be private."
+  }
+}
+```
+
+### Common Error Causes
+
+<AccordionGroup>
+  <Accordion title="User not found">
+    The supplied username does not correspond to any existing CodeChef account,
+    or the account may have been deleted.
+
+    **Resolution:** Verify the username at `https://www.codechef.com/users/<username>`.
+    Usernames are case-sensitive on CodeChef.
+  </Accordion>
+
+  <Accordion title="Profile is private or inaccessible">
+    CodeChef returned a non-200 HTTP status when Resume Insight tried to load
+    the profile page. This can happen if the profile is private, the user is
+    banned, or CodeChef is temporarily rate-limiting requests.
+
+    **Resolution:** Try the request again after a few minutes. If the profile is
+    visible in a browser, Resume Insight should be able to fetch it.
+  </Accordion>
+
+  <Accordion title="Could not parse username from input">
+    The value supplied to `user_input` could not be parsed into a valid CodeChef
+    username. This can happen if a non-CodeChef URL is passed.
+
+    ```json
+    { "error": "Could not parse CodeChef username from input" }
+    ```
+
+    This error returns HTTP `400` (not a fallback profile object).
+
+    **Resolution:** Pass a plain username (e.g., `tourist`) or a well-formed
+    CodeChef profile URL (e.g., `https://www.codechef.com/users/tourist`).
+  </Accordion>
+</AccordionGroup>

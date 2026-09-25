@@ -1,0 +1,132 @@
+---
+title: "POST /predict-role — AI Fresher Role Recommender"
+sidebarTitle: "Role Prediction"
+description: "POST /predict-role uses a HuggingFace AI model to classify your skills and recommend the best-fit fresher job roles for your profile."
+---
+
+The `/predict-role` endpoint uses an AI classification model to analyze your skills and experience text, then recommends the most suitable entry-level job roles for you. You pass in a free-form string — typically a combination of your technical skills, technologies you know, and a short summary of your background — and the model returns a predicted category label and a curated list of fresher roles that match your profile. If the AI service is temporarily unavailable, the endpoint automatically falls back to a keyword-based heuristic so you always get a result.
+
+## Endpoint
+
+```
+POST /predict-role
+```
+
+**Content-Type:** `application/json`
+
+<Note>
+  Authentication is **not required** for this endpoint. You can call it directly
+  with any resume text or skill list without signing in.
+</Note>
+
+## Request Parameters
+
+<ParamField body="inputs" type="string" required>
+  A combined text string containing your skills, technologies, and a brief
+  summary of your background. For best results, include your technical skills,
+  any frameworks or tools you know, and a one- or two-sentence career objective.
+  Text longer than **2,000 characters** is automatically truncated to the first
+  2,000 characters before classification.
+</ParamField>
+
+### Example Request
+
+```json
+{
+  "inputs": "Python, FastAPI, SQL, MongoDB, REST APIs, Git, Docker. I enjoy building backend systems and APIs. Interested in backend development and cloud infrastructure."
+}
+```
+
+```bash
+curl -X POST http://localhost:8000/predict-role \
+  -H "Content-Type: application/json" \
+  -d '{
+    "inputs": "Python, FastAPI, SQL, MongoDB, REST APIs, Git, Docker. I enjoy building backend systems and APIs."
+  }'
+```
+
+---
+
+## Response
+
+<ResponseField name="predicted_label" type="string">
+  The category label predicted by the AI model. This label represents the
+  broad domain your profile best matches. Possible values: `technology`,
+  `programming`, `creativity`, `analysis`, `learning`, `organization`,
+  `responsibility`.
+</ResponseField>
+
+<ResponseField name="recommended_roles" type="string[]">
+  An array of specific fresher job titles recommended for your profile, derived
+  from the `predicted_label`. Returns an empty array if the predicted label does
+  not map to any known roles.
+</ResponseField>
+
+<ResponseField name="confidence" type="number">
+  The model's confidence in its prediction, expressed as a decimal between
+  **0.0** and **1.0**. Values above `0.7` indicate high confidence. A value of
+  exactly `0.5` means the keyword-based fallback was used instead of the AI
+  model.
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "predicted_label": "programming",
+  "recommended_roles": [
+    "Backend Developer - Fresher"
+  ],
+  "confidence": 0.84
+}
+```
+
+---
+
+## Label to Role Mapping
+
+The AI model classifies your input into one of seven labels. Each label maps to one or more recommended fresher roles:
+
+| Predicted Label | Recommended Fresher Roles |
+|----------------|--------------------------|
+| `technology` | Software Engineer - Fresher, Full Stack Developer - Fresher |
+| `programming` | Backend Developer - Fresher |
+| `creativity` | UI/UX Designer - Fresher |
+| `analysis` | Data Analyst - Fresher |
+| `learning` | Machine Learning Intern |
+| `organization` | Business Analyst - Fresher |
+| `responsibility` | Cybersecurity Analyst - Fresher |
+
+<Tip>
+  To get the most relevant role recommendations, include a mix of your
+  **technical skills** (tools and languages), your **area of interest**, and
+  a short **career objective sentence** in the `inputs` field. A richer input
+  gives the model more signal to work with.
+</Tip>
+
+---
+
+## Fallback Behavior
+
+<Note>
+  If the HuggingFace AI service is unavailable — due to a network timeout,
+  rate limit, or authentication issue — the endpoint automatically switches to
+  a **keyword-based heuristic**. The heuristic scans your input for known
+  technology keywords and assigns a label accordingly. In this case, the
+  response will have `"confidence": 0.5` to indicate that the fallback was used
+  rather than the AI model. All other response fields remain identical.
+</Note>
+
+The keyword heuristic maps common technology terms to labels in this order of precedence:
+
+| Keywords in `inputs` | Fallback Label |
+|---------------------|---------------|
+| `react`, `angular`, `vue`, `frontend` | `technology` |
+| `python`, `java`, `node`, `backend`, `api` | `programming` |
+| `ui`, `ux`, `figma`, `design` | `creativity` |
+| `data`, `analysis`, `excel`, `power bi`, `sql` | `analysis` |
+| `ml`, `machine learning`, `deep learning`, `tensorflow`, `pytorch` | `learning` |
+| `business`, `requirements`, `stakeholder` | `organization` |
+| `security`, `cyber`, `vulnerability`, `network` | `responsibility` |
+
+If no keywords match, the fallback defaults to `technology` with `"confidence": 0.5`.

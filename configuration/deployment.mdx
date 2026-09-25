@@ -1,0 +1,218 @@
+---
+title: "Deploy Resume Insight with Docker or Manual Setup"
+sidebarTitle: "Deployment"
+description: "Run Resume Insight locally or in production using Docker Compose for a one-command setup, or manually for custom server environments."
+---
+
+Resume Insight can be deployed using Docker Compose for a one-command setup that starts all three services together, or manually when you need finer control over your environment — for example, when deploying to a cloud VM, connecting to an existing managed database, or integrating into a CI/CD pipeline. Both paths result in the same running application; choose the one that fits your infrastructure.
+
+## Docker Compose (Recommended)
+
+Docker Compose is the fastest way to get a fully working instance of Resume Insight running. A single command builds and starts the frontend, backend API, and a local MongoDB instance — all pre-wired to talk to each other.
+
+Before running the command, make sure you have completed the [environment variable setup](/configuration/environment) and that your `backend1/.env` file is filled in with real values.
+
+<Steps>
+  <Step title="Ensure Docker is running">
+    Open Docker Desktop (macOS/Windows) or confirm the Docker daemon is active on Linux:
+
+    ```bash
+    docker info
+    ```
+  </Step>
+
+  <Step title="Build and start all services">
+    From the project root directory (the folder that contains `docker-compose.yml`), run:
+
+    ```bash
+    docker compose up --build
+    ```
+
+    The first build takes a few minutes while Docker downloads base images and installs dependencies. Subsequent starts are faster because layers are cached.
+  </Step>
+
+  <Step title="Confirm all services are healthy">
+    Watch the terminal output. When you see all three services reporting ready states, open your browser and visit:
+    - **Frontend:** [http://localhost:3000](http://localhost:3000)
+    - **API:** [http://localhost:8000](http://localhost:8000)
+    - **Interactive API Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
+  </Step>
+
+  <Step title="Stop the services when done">
+    Press `Ctrl + C` in the terminal running Compose, then run:
+
+    ```bash
+    docker compose down
+    ```
+
+    This stops and removes the containers while preserving your MongoDB data volume so no data is lost between restarts.
+
+    If you also want to wipe the local database and start completely fresh, add the `-v` flag:
+
+    ```bash
+    docker compose down -v
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  The `docker-compose.yml` automatically overrides `MONGO_URI` to point to the bundled MongoDB container (`mongodb://mongo:27017/`). Your `.env` file's `MONGO_URI` value is only used when running the backend outside of Docker — for example, during manual setup.
+</Note>
+
+---
+
+## Manual Setup
+
+Use manual setup when you want to run the backend and frontend as native processes — for example, during active development, when you already have a running MongoDB instance, or when deploying to a server without Docker.
+
+### Backend
+
+<Steps>
+  <Step title="Navigate to the backend directory">
+    ```bash
+    cd backend1
+    ```
+  </Step>
+
+  <Step title="Create and activate a virtual environment">
+    <Tabs>
+      <Tab title="macOS / Linux">
+        ```bash
+        python -m venv .venv
+        source .venv/bin/activate
+        ```
+      </Tab>
+      <Tab title="Windows">
+        ```bash
+        python -m venv .venv
+        .\.venv\Scripts\activate
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Install Python dependencies">
+    ```bash
+    pip install -r requirements.txt
+    ```
+  </Step>
+
+  <Step title="Add your .env file">
+    Copy the example file and fill in your values:
+
+    ```bash
+    cp .env.example .env
+    ```
+
+    Then open `.env` and replace the placeholder values with real credentials. See [Environment Variables](/configuration/environment) for a full reference.
+  </Step>
+
+  <Step title="Start the backend server">
+    ```bash
+    python run.py
+    ```
+
+    The API server starts on **port 8000**. You should see output confirming the server is running and the routes are registered.
+  </Step>
+</Steps>
+
+### Frontend
+
+<Steps>
+  <Step title="Navigate to the frontend directory">
+    Open a new terminal window (keep the backend running in the first one), then:
+
+    ```bash
+    cd frontend-react
+    ```
+  </Step>
+
+  <Step title="Install Node.js dependencies">
+    ```bash
+    npm install
+    ```
+  </Step>
+
+  <Step title="Start the development server">
+    ```bash
+    npm start
+    ```
+
+    The React app starts on **port 3000** and automatically opens in your default browser. It is pre-configured to send API requests to `http://localhost:8000`.
+  </Step>
+</Steps>
+
+---
+
+## Service URLs
+
+Once all services are running — either via Docker Compose or manually — use the following URLs:
+
+| Service | URL | Notes |
+|---|---|---|
+| **Frontend** | [http://localhost:3000](http://localhost:3000) | Main Resume Insight web application |
+| **Backend API** | [http://localhost:8000](http://localhost:8000) | REST API base URL |
+| **Interactive API Docs** | [http://localhost:8000/docs](http://localhost:8000/docs) | Swagger UI — explore and test all endpoints |
+
+<Note>
+  The interactive API documentation at `http://localhost:8000/docs` is available whenever the backend is running. It lets you inspect every endpoint, view request and response schemas, and send test requests directly from your browser — no separate API client required.
+</Note>
+
+---
+
+## Production Considerations
+
+Deploying Resume Insight to a public-facing server requires a few additional steps beyond a local setup. The following checklist covers the most important changes to make before going live.
+
+<CardGroup cols={2}>
+  <Card title="Use a Reverse Proxy" icon="server">
+    Place **nginx** or **Caddy** in front of both the frontend and backend. A reverse proxy handles TLS termination, serves your custom domain, and keeps port 8000 off the public internet. Proxy `/api/` to `localhost:8000` and serve the built React app from `localhost:3000` or directly as static files.
+  </Card>
+  <Card title="Set a Strong SECRET_KEY" icon="key">
+    Generate a cryptographically strong secret with `openssl rand -hex 32` and set it as the `SECRET_KEY` environment variable. Never reuse the placeholder value from `.env.example`. Rotating this key in production signs out all active users immediately.
+  </Card>
+  <Card title="Use MongoDB Atlas" icon="database">
+    Replace the local MongoDB container with a **MongoDB Atlas** cluster for automatic backups, point-in-time recovery, and managed scaling. Update `MONGO_URI` in your environment to the Atlas connection string and remove the `mongo` service from `docker-compose.yml` if you no longer need it.
+  </Card>
+  <Card title="Configure CORS for Your Domain" icon="globe">
+    The backend's CORS policy defaults to `http://localhost:3000`. In production, update the allowed origins in `backend1/app/main.py` to include your actual frontend domain (e.g., `https://app.resumeinsight.io`) so browsers do not block cross-origin API requests.
+  </Card>
+</CardGroup>
+
+<Accordion title="Recommended nginx reverse proxy configuration">
+  The following nginx server block routes traffic to the Resume Insight frontend and API. Replace `app.yourdomain.com` with your actual domain and adjust the paths to match your TLS certificate locations.
+
+  ```nginx
+  server {
+      listen 80;
+      server_name app.yourdomain.com;
+      return 301 https://$host$request_uri;
+  }
+
+  server {
+      listen 443 ssl;
+      server_name app.yourdomain.com;
+
+      ssl_certificate     /etc/letsencrypt/live/app.yourdomain.com/fullchain.pem;
+      ssl_certificate_key /etc/letsencrypt/live/app.yourdomain.com/privkey.pem;
+
+      # Forward API requests to the FastAPI backend
+      location /api/ {
+          proxy_pass         http://127.0.0.1:8000/;
+          proxy_set_header   Host $host;
+          proxy_set_header   X-Real-IP $remote_addr;
+          proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+      }
+
+      # Serve the React frontend
+      location / {
+          proxy_pass         http://127.0.0.1:3000;
+          proxy_set_header   Host $host;
+      }
+  }
+  ```
+</Accordion>
+
+<Warning>
+  Do not expose the MongoDB port (27017) to the public internet. When using Docker Compose, MongoDB listens only on `localhost` by default — keep it that way. If you migrate to MongoDB Atlas, there is no local port to worry about.
+</Warning>

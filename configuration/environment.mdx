@@ -1,0 +1,132 @@
+---
+title: "Configure Resume Insight with Environment Variables"
+sidebarTitle: "Environment"
+description: "Set up the environment variables that control Resume Insight's database, AI providers, authentication, and third-party API integrations."
+---
+
+Resume Insight is configured entirely through environment variables, making it straightforward to move between local development, staging, and production without changing any code. These variables control how the platform connects to MongoDB, which AI providers power the analysis features, how long user sessions last, and whether optional integrations like GitHub profile analysis are available. You place all of these in a `.env` file inside the `backend1/` directory before starting the server.
+
+## Required Variables
+
+These variables must be present for Resume Insight to start successfully. Missing any of them will prevent core features — authentication, database storage, or AI-powered ranking — from working.
+
+<ParamField body="MONGO_URI" type="string" required>
+  The full connection string for your MongoDB instance. Use a local connection string for development or a MongoDB Atlas URI for production.
+
+  **Example:** `mongodb://localhost:27017/` or `mongodb+srv://user:pass@cluster.mongodb.net/`
+</ParamField>
+
+<ParamField body="MONGO_DB_NAME" type="string" required>
+  The name of the MongoDB database Resume Insight will use to store user profiles, resumes, and analysis results.
+
+  **Default:** `resume_analyzer`  
+  **Example:** `resume_analyzer`
+</ParamField>
+
+<ParamField body="SECRET_KEY" type="string" required>
+  A long, random string used to sign and verify JWT session tokens. Every user session is cryptographically tied to this value.
+
+  **Example:** `a9f3e2b1c847d6...` *(generate with `openssl rand -hex 32`)*
+</ParamField>
+
+<ParamField body="GROQ_API_KEY" type="string" required>
+  Your API key from [console.groq.com](https://console.groq.com). Resume Insight uses GROQ's LLaMA 4 model to extract structured candidate data during the admin Top-N resume ranking workflow. Without this key, the top-resume filter feature is unavailable.
+
+  **Example:** `gsk_xxxxxxxxxxxxxxxxxxxxxxxx`
+</ParamField>
+
+<ParamField body="GOOGLE_CLIENT_ID" type="string" required>
+  Your OAuth 2.0 client ID from the Google Cloud Console. Required to enable the **Sign in with Google** button on the login page. Users who sign up via Google cannot authenticate without this value.
+
+  **Example:** `294482440196-xxxxxxxxxxxx.apps.googleusercontent.com`
+</ParamField>
+
+---
+
+## Optional Variables
+
+These variables are not required to start the server, but they unlock specific features. Resume Insight will run and log a warning if they are absent — the associated feature will be disabled or degraded.
+
+<ParamField body="OPENROUTER_API_KEY" type="string">
+  Your API key from [openrouter.ai](https://openrouter.ai). When present, Resume Insight uses OpenRouter's models to perform a deeper semantic re-ranking pass on top candidate shortlists in the admin filter. Without it, the shortlist is still generated using GROQ extraction alone — the re-ranking step is skipped.
+
+  **Unlocks:** AI-powered semantic re-ranking in the admin Top-N candidate filter  
+  **Example:** `sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxx`
+</ParamField>
+
+<ParamField body="HUGGINGFACE_API_KEY" type="string">
+  Your API key from [huggingface.co](https://huggingface.co). Used to call the HuggingFace Inference API for the AI Role Predictor feature. Without a key the predictor falls back to unauthenticated requests, which may be rate-limited on the free tier.
+
+  **Unlocks:** Reliable access to the AI role prediction endpoint  
+  **Example:** `hf_xxxxxxxxxxxxxxxxxxxxxxxx`
+</ParamField>
+
+<ParamField body="GITHUB_TOKEN" type="string">
+  A GitHub Personal Access Token (classic or fine-grained). Enables the GitHub profile analysis feature, which pulls repository counts, language breakdowns, and pull-request metrics for a candidate's GitHub username. Without this token the GitHub analysis endpoint returns an error asking for a token.
+
+  **Unlocks:** GitHub profile analysis in user and admin views  
+  **Example:** `ghp_xxxxxxxxxxxxxxxxxxxxxxxx`
+</ParamField>
+
+<ParamField body="ALGORITHM" type="string">
+  The signing algorithm used for JWT tokens. You rarely need to change this.
+
+  **Default:** `HS256`
+</ParamField>
+
+<ParamField body="ACCESS_TOKEN_EXPIRE_MINUTES" type="integer">
+  How many minutes a login session remains valid before the user must sign in again.
+
+  **Default:** `30`  
+  **Example:** `60`
+</ParamField>
+
+---
+
+## Setting Up Your `.env` File
+
+Create a file named `.env` inside the `backend1/` directory and populate it with your values. The example below uses placeholder values — replace each one with a real credential before starting the server.
+
+```bash
+# ── Google OAuth ──────────────────────────────────────────────────────────────
+GOOGLE_CLIENT_ID=your-google-oauth-client-id.apps.googleusercontent.com
+
+# ── MongoDB ───────────────────────────────────────────────────────────────────
+MONGO_URI=mongodb+srv://youruser:yourpassword@cluster0.mongodb.net/
+MONGO_DB_NAME=resume_analyzer
+
+# ── JWT Session ───────────────────────────────────────────────────────────────
+SECRET_KEY=replace-with-a-long-random-string-at-least-32-chars
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# ── AI Providers ──────────────────────────────────────────────────────────────
+# Required — powers top-N candidate extraction
+GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxx
+
+# Optional — enables semantic re-ranking of shortlists
+OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxx
+
+# Optional — enables AI role prediction (falls back to free-tier without key)
+HUGGINGFACE_API_KEY=hf_xxxxxxxxxxxxxxxxxxxxxxxx
+
+# ── External Integrations ─────────────────────────────────────────────────────
+# Optional — enables GitHub profile analysis
+GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+<Note>
+  Copy `backend1/.env.example` to `backend1/.env` as your starting point — it already contains the correct variable names with placeholder values.
+</Note>
+
+<Warning>
+  **Never commit your `.env` file to version control.** It contains secrets that grant full access to your database, AI billing accounts, and user sessions. Confirm that `.env` is listed in your `.gitignore` before your first commit.
+</Warning>
+
+<Warning>
+  **`SECRET_KEY` must be a long, unpredictable random string.** If you change this value after users have logged in, every existing session token is immediately invalidated and all users will be signed out. Generate a strong key once with `openssl rand -hex 32` and do not rotate it unless you intend to invalidate all sessions.
+</Warning>
+
+<Tip>
+  When deploying with Docker Compose, the `docker-compose.yml` file automatically reads `backend1/.env` via `env_file`. You do not need to set variables anywhere else — just fill in the `.env` file and run `docker compose up --build`.
+</Tip>

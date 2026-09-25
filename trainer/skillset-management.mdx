@@ -1,0 +1,332 @@
+---
+title: "Manage Company Skillsets for Targeted Resume Filtering"
+sidebarTitle: "Skillset Management"
+description: "Upload and maintain Excel-based company skillsets that trainers use as skill references when screening and filtering student resumes."
+---
+
+Skillset management gives you a structured way to maintain the exact skills each company or domain expects from candidates. By uploading and editing Excel-based skillsets, you establish a living reference library that powers the `skills` filter during bulk resume screening. Instead of typing required skills manually for every filtering session, you define them once per company and reuse them across placement drives. You can upload a new skillset file, preview what's currently loaded, push live edits, and even maintain multiple named skillsets for different recruitment cycles — all through the trainer tools.
+
+## What Is a Skillset?
+
+A skillset is an Excel file (`.xlsx`) where each **sheet represents one company or domain**. Each sheet contains a list of skill names that the company expects candidates to possess. When you filter resumes using the `skills` parameter, you reference these skill names directly.
+
+**Example structure of a skillset Excel file:**
+
+| Sheet Name (Company) | Column: Skill |
+|---|---|
+| TCS | Python |
+| TCS | SQL |
+| TCS | Communication |
+| Infosys | Java |
+| Infosys | Spring Boot |
+| Infosys | REST APIs |
+
+Resume Insight reads all sheets and makes the skill names available for comparison when you run a filter pass. This ensures your screening criteria stay aligned with each company's actual requirements.
+
+<Info>
+  Skillset files must be valid `.xlsx` or `.xls` files. CSV files and spreadsheets saved in other formats are not accepted. Each sheet must contain at least one row of skill data.
+</Info>
+
+---
+
+## Upload a Skillset
+
+**`POST /admin/upload_skillset`**
+
+Upload an Excel skillset file from your local machine. The file is saved on the server and becomes the active skillset used for filtering.
+
+### Form Parameters
+
+<ParamField body="file" type="file" required>
+  The Excel skillset file to upload. Must be `.xlsx` or `.xls`. Each sheet should represent a company or domain, with skills listed row by row.
+</ParamField>
+
+<ParamField body="mode" type="string" default="replace">
+  Upload mode. Use `replace` to overwrite the existing skillset entirely, or `append` to merge the new file's sheets into the current skillset.
+
+  - **`replace`** — The uploaded file becomes the new skillset. All previously saved sheets are discarded.
+  - **`append`** — Sheets from the uploaded file are merged with the existing skillset. If a sheet name already exists, the new version overwrites it; unique sheet names are added alongside existing ones.
+</ParamField>
+
+### Example — Replace mode
+
+```bash
+curl -X POST http://localhost:8000/admin/upload_skillset \
+  -H "Authorization: Bearer <your_trainer_token>" \
+  -F "file=@company_skillsets.xlsx" \
+  -F "mode=replace"
+```
+
+### Example Response (replace)
+
+```json
+{
+  "status": "success",
+  "message": "Skillset file uploaded successfully ✅",
+  "mode": "replace",
+  "filename": "company_skillsets.xlsx",
+  "path": "/app/Skillset of Companies Visited.xlsx"
+}
+```
+
+### Example — Append mode
+
+```bash
+curl -X POST http://localhost:8000/admin/upload_skillset \
+  -H "Authorization: Bearer <your_trainer_token>" \
+  -F "file=@new_companies.xlsx" \
+  -F "mode=append"
+```
+
+### Example Response (append)
+
+```json
+{
+  "status": "success",
+  "message": "Skillset appended successfully! 2 sheet(s) added/updated ✅",
+  "mode": "append",
+  "sheets_added": ["Wipro", "Cognizant"],
+  "total_sheets": 7
+}
+```
+
+<Tip>
+  Use `append` mode during an ongoing placement season to add new companies without losing previously configured skillsets. Use `replace` at the start of a new academic cycle when you want a clean slate.
+</Tip>
+
+---
+
+## Preview Current Skillset
+
+**`GET /admin/skillset_preview`**
+
+Returns the full contents of the currently active skillset as JSON. Sheet names appear as keys, and each key maps to an array of row objects.
+
+### Example Request
+
+```bash
+curl -X GET http://localhost:8000/admin/skillset_preview \
+  -H "Authorization: Bearer <your_trainer_token>"
+```
+
+### Example Response
+
+```json
+{
+  "status": "success",
+  "sheets": {
+    "TCS": [
+      { "Skill": "Python" },
+      { "Skill": "SQL" },
+      { "Skill": "Communication" },
+      { "Skill": "Problem Solving" }
+    ],
+    "Infosys": [
+      { "Skill": "Java" },
+      { "Skill": "Spring Boot" },
+      { "Skill": "REST APIs" },
+      { "Skill": "Agile Methodology" }
+    ],
+    "Zoho": [
+      { "Skill": "C++" },
+      { "Skill": "Data Structures" },
+      { "Skill": "Algorithms" }
+    ]
+  }
+}
+```
+
+If no skillset has been uploaded yet, the response returns an empty `sheets` object with an explanatory message:
+
+```json
+{
+  "sheets": {},
+  "message": "No skillset file uploaded yet"
+}
+```
+
+---
+
+## Update Skillset Data
+
+**`POST /admin/update_skillset`**
+
+Push edited skillset data directly as JSON without re-uploading an Excel file. This is useful when you want to add, remove, or correct individual skill entries after previewing the current skillset.
+
+The request body must contain a `sheets` object where each key is a sheet (company) name and each value is an array of row objects matching the Excel structure.
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:8000/admin/update_skillset \
+  -H "Authorization: Bearer <your_trainer_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sheets": {
+      "TCS": [
+        { "Skill": "Python" },
+        { "Skill": "SQL" },
+        { "Skill": "Communication" },
+        { "Skill": "Django" }
+      ],
+      "Infosys": [
+        { "Skill": "Java" },
+        { "Skill": "Spring Boot" },
+        { "Skill": "Microservices" }
+      ]
+    }
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "status": "success",
+  "message": "Skillset updated successfully"
+}
+```
+
+<Note>
+  `POST /admin/update_skillset` overwrites all sheets with the data you send. Include every sheet you want to keep — any sheet omitted from the request body will be removed from the saved Excel file.
+</Note>
+
+---
+
+## Managing Named Skillsets
+
+In addition to the primary active skillset file, you can save multiple named skillsets in the database. Named skillsets persist across sessions and are useful for maintaining separate skill profiles for different companies, batches, or recruitment rounds.
+
+<CardGroup cols={2}>
+  <Card title="List Named Skillsets" icon="list">
+    `GET /admin/skillset_uploads` — Retrieve all saved named skillsets.
+  </Card>
+  <Card title="Save New Skillset" icon="floppy-disk">
+    `POST /admin/skillset_uploads` — Create a new named skillset entry.
+  </Card>
+  <Card title="Update a Skillset" icon="pen-to-square">
+    `PUT /admin/skillset_uploads/{id}` — Edit the name or sheet data of a saved skillset.
+  </Card>
+  <Card title="Delete a Skillset" icon="trash">
+    `DELETE /admin/skillset_uploads/{id}` — Permanently remove a named skillset.
+  </Card>
+</CardGroup>
+
+### List All Named Skillsets — `GET /admin/skillset_uploads`
+
+```bash
+curl -X GET http://localhost:8000/admin/skillset_uploads \
+  -H "Authorization: Bearer <your_trainer_token>"
+```
+
+**Example Response:**
+
+```json
+{
+  "status": "success",
+  "uploads": [
+    {
+      "id": "1719823045000",
+      "name": "Q3 Campus Drive 2024",
+      "sheets": {
+        "TCS": [{ "Skill": "Python" }, { "Skill": "SQL" }],
+        "Infosys": [{ "Skill": "Java" }, { "Skill": "Spring Boot" }]
+      },
+      "uploadedAt": "2024-07-01T10:17:25.000Z"
+    },
+    {
+      "id": "1722415200000",
+      "name": "Product Companies 2025",
+      "sheets": {
+        "Zoho": [{ "Skill": "C++" }, { "Skill": "Data Structures" }]
+      },
+      "uploadedAt": "2024-07-31T08:00:00.000Z"
+    }
+  ]
+}
+```
+
+### Save a New Named Skillset — `POST /admin/skillset_uploads`
+
+```bash
+curl -X POST http://localhost:8000/admin/skillset_uploads \
+  -H "Authorization: Bearer <your_trainer_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Product Companies 2025",
+    "sheets": {
+      "Zoho": [
+        { "Skill": "C++" },
+        { "Skill": "Data Structures" },
+        { "Skill": "Algorithms" }
+      ],
+      "Freshworks": [
+        { "Skill": "Ruby on Rails" },
+        { "Skill": "PostgreSQL" },
+        { "Skill": "REST APIs" }
+      ]
+    }
+  }'
+```
+
+**Example Response:**
+
+```json
+{
+  "status": "success",
+  "id": "1722415200000",
+  "message": "Skillset saved successfully"
+}
+```
+
+### Update a Named Skillset — `PUT /admin/skillset_uploads/{id}`
+
+```bash
+curl -X PUT http://localhost:8000/admin/skillset_uploads/1722415200000 \
+  -H "Authorization: Bearer <your_trainer_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Product Companies 2025 — Updated",
+    "sheets": {
+      "Zoho": [
+        { "Skill": "C++" },
+        { "Skill": "Data Structures" },
+        { "Skill": "Algorithms" },
+        { "Skill": "System Design" }
+      ],
+      "Freshworks": [
+        { "Skill": "Ruby on Rails" },
+        { "Skill": "PostgreSQL" }
+      ]
+    }
+  }'
+```
+
+**Example Response:**
+
+```json
+{
+  "status": "success",
+  "message": "Skillset updated successfully"
+}
+```
+
+### Delete a Named Skillset — `DELETE /admin/skillset_uploads/{id}`
+
+```bash
+curl -X DELETE http://localhost:8000/admin/skillset_uploads/1722415200000 \
+  -H "Authorization: Bearer <your_trainer_token>"
+```
+
+**Example Response:**
+
+```json
+{
+  "status": "success",
+  "message": "Skillset deleted successfully"
+}
+```
+
+<Note>
+  Named skillsets are stored in the database and persist across sessions and server restarts. The primary active skillset (uploaded via `POST /admin/upload_skillset`) is stored as a file on the server and is the one used during resume filtering.
+</Note>

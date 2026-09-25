@@ -1,0 +1,155 @@
+{
+  "projectType": "saas",
+  "projectName": "Resume Insight",
+  "projectDescription": "An AI-powered platform that analyzes resumes, evaluates coding profiles, and delivers personalized career guidance for job seekers, placement trainers, and HR recruiters.",
+  "theme": "luma",
+  "primaryColor": "#4F46E5",
+  "lightColor": "#EEF2FF",
+  "darkColor": "#1E1B4B",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "User Roles",
+            "pages": [
+              "roles/job-seeker",
+              "roles/trainer",
+              "roles/admin"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/resume-analysis",
+              "features/ats-scoring",
+              "features/coding-profiles",
+              "features/role-prediction",
+              "features/career-guidance",
+              "features/resume-builder"
+            ]
+          },
+          {
+            "group": "Trainer Tools",
+            "pages": [
+              "trainer/resume-filtering",
+              "trainer/skillset-management",
+              "trainer/top-n-ranking"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/environment",
+              "configuration/deployment"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/overview",
+              "api/authentication"
+            ]
+          },
+          {
+            "group": "Resume & Analysis",
+            "pages": [
+              "api/resume-upload",
+              "api/analyze-all",
+              "api/role-prediction",
+              "api/career-guidance"
+            ]
+          },
+          {
+            "group": "Platform Profiles",
+            "pages": [
+              "api/github",
+              "api/leetcode",
+              "api/codechef"
+            ]
+          },
+          {
+            "group": "Trainer Endpoints",
+            "pages": [
+              "api/filter-resumes",
+              "api/skillset",
+              "api/top-resume-ranking"
+            ]
+          },
+          {
+            "group": "User & Auth",
+            "pages": [
+              "api/user-dashboard",
+              "api/ai-chat"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "ATS Score Analysis — measures how well a resume aligns with applicant tracking systems",
+    "Resume Parsing — extracts education, skills, certifications, and experience from PDF/DOCX",
+    "Coding Profile Analysis — fetches LeetCode, GitHub, and CodeChef activity metrics",
+    "AI Role Prediction — uses HuggingFace + keyword heuristics to recommend suitable fresher roles",
+    "Career Guidance — LLM-generated step-by-step improvement tips and role roadmaps",
+    "AI Chat Assistant — resume-aware Q&A powered by OpenRouter GPT models",
+    "Trainer Resume Filtering — filter student resumes by CGPA, skills, degree, ATS score with SSE streaming",
+    "Top-N AI Resume Ranking — GROQ LLaMA 4 extraction + OpenRouter scoring to surface best candidates",
+    "Skillset Management — upload and manage company-specific skill requirements via Excel files",
+    "Role-based Access Control — separate dashboards for admin (HR), trainer, and user (job seeker)",
+    "Google OAuth — sign-in restricted to institutional email domain",
+    "Portfolio Generation — auto-generate a structured portfolio from resume data"
+  ],
+  "publicApiSurface": [
+    "POST /auth/login",
+    "POST /auth/register",
+    "POST /auth/set_password",
+    "GET  /auth/verify_token",
+    "POST /auth/google_signin",
+    "POST /auth/logout",
+    "POST /resume/upload_resume",
+    "POST /analyze_all",
+    "GET  /leetcode/analyze_leetcode/{username}",
+    "GET  /github/analyze_github/{user_input}",
+    "GET  /codechef/analyze_codechef/{user_input}",
+    "POST /predict-role",
+    "POST /guidance/generate",
+    "POST /guidance/role-roadmap",
+    "POST /ai/chat",
+    "GET  /user/info/{email}",
+    "POST /user/upload_resume",
+    "DELETE /user/clear_resume/{email}",
+    "GET  /user/history/{email}",
+    "GET  /user/guidance/{email}",
+    "POST /user/guidance/{email}",
+    "POST /user/portfolio",
+    "GET  /user/skillset",
+    "GET  /user/skillset_json",
+    "POST /admin/filter_uploaded_resumes",
+    "POST /admin/filter_uploaded_resumes_stream",
+    "POST /admin/upload_skillset",
+    "GET  /admin/skillset_preview",
+    "POST /admin/update_skillset",
+    "GET  /admin/skillset_uploads",
+    "POST /admin/skillset_uploads",
+    "DELETE /admin/skillset_uploads/{id}",
+    "PUT  /admin/skillset_uploads/{id}",
+    "POST /admin/top_resume_filter/upload",
+    "POST /admin/top_resume_filter/top_n"
+  ]
+}

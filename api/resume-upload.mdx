@@ -1,0 +1,195 @@
+---
+title: "POST /resume/upload_resume — Parse Resume File"
+sidebarTitle: "Resume Upload"
+description: "POST /resume/upload_resume accepts a PDF or DOCX file and extracts structured data including skills, education, certifications, and ATS score."
+---
+
+Uploading your resume to `/resume/upload_resume` triggers Resume Insight's full parsing pipeline: the file is converted to text, structured data is extracted by the AI, and an ATS compatibility score is calculated and returned — all in a single request. You get back a detailed breakdown of every section the parser found, along with a 0–100 ATS score and a per-category score breakdown, so you can see exactly where your resume stands before you apply for any role.
+
+## Endpoint
+
+```
+POST /resume/upload_resume
+```
+
+**Content-Type:** `multipart/form-data`
+
+<Note>
+  Authentication is **not required** for this endpoint. You can parse any resume
+  without logging in. To persist the results to your account, use
+  `POST /user/upload_resume` instead.
+</Note>
+
+## Request Parameters
+
+<ParamField body="file" type="file" required>
+  The resume file to parse. Accepted formats: **PDF** and **DOCX**. The file is
+  read in-memory and never stored by this endpoint — results are returned
+  directly in the response.
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:8000/resume/upload_resume \
+  -F "file=@/path/to/your_resume.pdf"
+```
+
+---
+
+## Response
+
+<ResponseField name="data" type="object">
+  Structured resume data extracted by the AI parser. Contains all sections
+  detected in the document — see the expandable below for the full field
+  reference.
+</ResponseField>
+
+<ResponseField name="ats_score" type="number">
+  ATS compatibility score from **0 to 100**. Calculated from keyword density,
+  section presence, formatting quality, measurable metrics, and more. Scores
+  above 75 are considered strong.
+</ResponseField>
+
+<ResponseField name="ats_breakdown" type="object">
+  Category-level breakdown of how the `ats_score` was computed. Each key
+  corresponds to a scoring category (e.g., `"Contact Info"`, `"Skills Section"`,
+  `"Soft Skills & Certs"`, `"Formatting Penalty"`) and its value is the points
+  awarded or deducted for that category.
+</ResponseField>
+
+<ResponseField name="word_count" type="number">
+  Total number of words detected in the resume. Resumes with 500–1,200 words
+  receive full marks in the ATS word-count category. Shorter or significantly
+  longer resumes receive partial credit.
+</ResponseField>
+
+### `data` Object Fields
+
+<Expandable title="Expand data field reference">
+  <ResponseField name="data.name" type="string">
+    Full name extracted from the top of the resume.
+  </ResponseField>
+
+  <ResponseField name="data.email" type="string">
+    Primary email address found in the resume.
+  </ResponseField>
+
+  <ResponseField name="data.phone" type="string">
+    Phone number extracted from the contact section.
+  </ResponseField>
+
+  <ResponseField name="data.education" type="object">
+    Education details parsed from the resume. Typically contains degree, institution,
+    graduation year, and CGPA or percentage where present.
+  </ResponseField>
+
+  <ResponseField name="data.skills" type="object">
+    Skills object with three sub-arrays:
+    - `technical` — programming languages, frameworks, tools
+    - `soft` — communication, teamwork, leadership, etc.
+    - `area_of_interest` — declared interest areas (e.g., Machine Learning, Web Development)
+  </ResponseField>
+
+  <ResponseField name="data.certifications" type="array">
+    List of certifications and courses mentioned in the resume. Each item is a
+    string containing the certificate name and issuing body where available.
+  </ResponseField>
+
+  <ResponseField name="data.projects" type="array">
+    Projects listed in the resume. Each item contains `title` and `description`
+    fields. AI-evaluated projects may also include an `evaluation` object with
+    industry relevance scores.
+  </ResponseField>
+
+  <ResponseField name="data.internships" type="array">
+    Internship experiences parsed from the resume. Each item includes the
+    company name, role, and duration where present.
+  </ResponseField>
+</Expandable>
+
+### Example Response
+
+```json
+{
+  "data": {
+    "name": "Priya Nair",
+    "email": "priya.nair@email.com",
+    "phone": "+91 98765 43210",
+    "linkedin": "https://linkedin.com/in/priyanair",
+    "github": "https://github.com/priyanair",
+    "languages": ["English", "Tamil"],
+    "education": {
+      "degree": "B.E. Computer Science and Engineering",
+      "institution": "Anna University",
+      "year": "2024",
+      "cgpa": "8.4"
+    },
+    "skills": {
+      "technical": ["Python", "React", "FastAPI", "MongoDB", "SQL", "Git"],
+      "soft": ["Problem Solving", "Communication", "Teamwork"],
+      "area_of_interest": ["Web Development", "Machine Learning"]
+    },
+    "certifications": [
+      "AWS Cloud Practitioner – Amazon Web Services",
+      "Python for Data Science – Coursera"
+    ],
+    "projects": [
+      {
+        "title": "Student Result Management System",
+        "description": "A web app built with React and FastAPI to manage student academic records with role-based access."
+      },
+      {
+        "title": "Sentiment Analysis API",
+        "description": "REST API that classifies product reviews as positive, negative, or neutral using a fine-tuned BERT model."
+      }
+    ],
+    "internships": [
+      {
+        "company": "TechCorp Solutions",
+        "role": "Backend Developer Intern",
+        "duration": "June 2023 – August 2023"
+      }
+    ]
+  },
+  "ats_score": 78,
+  "ats_breakdown": {
+    "Contact Info": 10,
+    "Skills Section": 15,
+    "Education Section": 10,
+    "Work Experience / Internship": 12,
+    "Keywords & Action Verbs": 10,
+    "Measurable Metrics": 6,
+    "Soft Skills & Certs": 5,
+    "Formatting Penalty": -2,
+    "Total ATS Score": 78
+  },
+  "word_count": 643
+}
+```
+
+---
+
+## Error Responses
+
+If the uploaded file cannot be parsed, the endpoint returns a `400` status with an error message.
+
+| Status | Response body | Cause |
+|--------|---------------|-------|
+| `400` | `{ "error": "Unsupported file format. Please upload a PDF or DOCX." }` | File type is not PDF or DOCX |
+| `400` | `{ "error": "Failed to extract text from the uploaded file." }` | File is corrupt, password-protected, or empty |
+
+<Warning>
+  Scanned image-only PDFs (where the document is a photograph of text) cannot
+  be parsed and will return a 400 error. Use a PDF that was exported digitally
+  from a word processor or LaTeX source for best results.
+</Warning>
+
+---
+
+<Note>
+  This endpoint **parses but does not save**. The response is returned directly
+  and no data is stored against any user account. To save your resume and ATS
+  score to your Resume Insight profile, use `POST /user/upload_resume` (requires
+  a valid JWT token).
+</Note>

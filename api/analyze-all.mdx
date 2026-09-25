@@ -1,0 +1,194 @@
+---
+title: "POST /analyze_all — Combined Resume and Profile Analysis"
+sidebarTitle: "Analyze All"
+description: "POST /analyze_all parses your resume and fetches GitHub, LeetCode, and CodeChef profiles in one call, returning a unified analysis object."
+---
+
+`/analyze_all` is the most powerful single endpoint in Resume Insight — it combines full resume parsing with live coding platform analysis in one call. Instead of hitting four separate endpoints, you upload your resume file and optionally pass your GitHub, LeetCode, and CodeChef usernames as query parameters. The API runs all of these analyses in parallel and returns a single unified JSON object. If any platform is unreachable or the username is invalid, the other results are still returned alongside a specific error key — you never lose partial data.
+
+## Endpoint
+
+```
+POST /analyze_all
+```
+
+**Content-Type:** `multipart/form-data` (for the file) + query parameters (for platform usernames)
+
+<Note>
+  Authentication is **not required** for this endpoint. All parameters except
+  `file` are optional — you only pay the latency cost for the platforms you
+  include.
+</Note>
+
+## Request Parameters
+
+<ParamField body="file" type="file" required>
+  Your resume as a **PDF** or **DOCX** file. This is the only required parameter.
+  The resume is parsed using the same pipeline as `POST /resume/upload_resume`.
+</ParamField>
+
+<ParamField query="github" type="string">
+  Your GitHub username or full profile URL (e.g., `johndoe` or
+  `https://github.com/johndoe`). When provided, the API fetches your public
+  repository counts, language breakdown, and pull-request metrics using the
+  GitHub GraphQL API.
+</ParamField>
+
+<ParamField query="leetcode" type="string">
+  Your LeetCode username. When provided, the API retrieves your problem-solving
+  stats including total solved, difficulty breakdown, and contest rating.
+</ParamField>
+
+<ParamField query="codechef" type="string">
+  Your CodeChef username or profile URL. When provided, the API retrieves your
+  rating, star level, and submission stats.
+</ParamField>
+
+<ParamField query="token" type="string">
+  A GitHub Personal Access Token. Use this if you want to include private
+  repository counts or if the server-side default token has insufficient rate
+  limits. If omitted, the server uses its own configured token.
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST "http://localhost:8000/analyze_all?github=johndoe&leetcode=john_lc&codechef=john_cc" \
+  -F "file=@/path/to/your_resume.pdf"
+```
+
+Passing a custom GitHub token:
+
+```bash
+curl -X POST "http://localhost:8000/analyze_all?github=johndoe&token=ghp_yourTokenHere" \
+  -F "file=@/path/to/your_resume.pdf"
+```
+
+Resume only (no platform analysis):
+
+```bash
+curl -X POST "http://localhost:8000/analyze_all" \
+  -F "file=@/path/to/your_resume.pdf"
+```
+
+---
+
+## Response
+
+The response is a flat JSON object with top-level keys for each analysis segment that was requested. Keys for platforms you did not pass are simply absent from the response.
+
+<ResponseField name="resume" type="object">
+  Full resume analysis — identical in structure to the response from
+  `POST /resume/upload_resume`. Contains `data` (structured resume fields),
+  `ats_score`, `ats_breakdown`, and `word_count`.
+</ResponseField>
+
+<ResponseField name="github" type="object">
+  GitHub metrics returned only when the `github` query parameter is provided.
+  Contains `username` and a `github_metrics` object with repository counts,
+  primary languages, star counts, and pull-request metrics.
+</ResponseField>
+
+<ResponseField name="leetcode" type="object">
+  LeetCode profile and performance data. Returned only when the `leetcode`
+  query parameter is provided. Includes total problems solved by difficulty,
+  acceptance rate, and contest rating where available.
+</ResponseField>
+
+<ResponseField name="codechef" type="object">
+  CodeChef profile data. Returned only when the `codechef` query parameter is
+  provided. Includes current rating, star level, and global rank.
+</ResponseField>
+
+<Note>
+  **Partial results are always returned.** If one platform fails — for example,
+  because a username does not exist or the platform's API is temporarily down —
+  the response will still include all successfully retrieved data. The failed
+  platform's key is replaced with an `_error` key (e.g., `github_error`,
+  `leetcode_error`, `codechef_error`) containing a plain-text description of
+  what went wrong.
+</Note>
+
+### Example Response (abbreviated)
+
+```json
+{
+  "resume": {
+    "data": {
+      "name": "Arjun Mehta",
+      "email": "arjun.mehta@email.com",
+      "skills": {
+        "technical": ["Python", "React", "SQL", "Docker"],
+        "soft": ["Communication", "Leadership"],
+        "area_of_interest": ["Backend Development", "Cloud"]
+      },
+      "education": {
+        "degree": "B.Tech Information Technology",
+        "institution": "VIT University",
+        "year": "2024",
+        "cgpa": "8.9"
+      }
+    },
+    "ats_score": 82,
+    "ats_breakdown": {
+      "Contact Info": 10,
+      "Skills Section": 15,
+      "Education Section": 10,
+      "Work Experience / Internship": 14,
+      "Keywords & Action Verbs": 11,
+      "Measurable Metrics": 8,
+      "Soft Skills & Certs": 5,
+      "Formatting Penalty": 0,
+      "Total ATS Score": 82
+    },
+    "word_count": 718
+  },
+  "github": {
+    "username": "arjunmehta",
+    "github_metrics": {
+      "total_repos": 24,
+      "public_repos": 18,
+      "private_repos": 6,
+      "total_stars": 47,
+      "primary_languages": ["Python", "JavaScript", "TypeScript"],
+      "total_prs_merged": 12,
+      "total_contributions_last_year": 340
+    }
+  },
+  "leetcode": {
+    "username": "arjun_lc",
+    "total_solved": 198,
+    "easy_solved": 95,
+    "medium_solved": 87,
+    "hard_solved": 16,
+    "acceptance_rate": 62.4,
+    "contest_rating": 1723
+  },
+  "codechef": {
+    "username": "arjun_cc",
+    "current_rating": 1654,
+    "stars": "3★",
+    "global_rank": 14820,
+    "country_rank": 3201
+  }
+}
+```
+
+### Example Response — partial failure
+
+```json
+{
+  "resume": { "...": "..." },
+  "github_error": "Could not parse GitHub username from input",
+  "leetcode": { "...": "..." },
+  "codechef_error": "CodeChef profile not found for username 'badname'"
+}
+```
+
+---
+
+<Tip>
+  Omit any platform parameters you do not use. Each included platform adds a
+  live network request to the response time. Passing only the platforms relevant
+  to your profile keeps the endpoint fast.
+</Tip>

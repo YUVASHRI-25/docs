@@ -1,0 +1,377 @@
+---
+title: "User Dashboard API: Profile, Resume, and Portfolio Endpoints"
+sidebarTitle: "User API"
+description: "Manage your job-seeker profile, upload resumes for ATS analysis, cache career guidance, generate your portfolio, and download company skillset data."
+---
+
+The `/user` endpoint group is the core of every job seeker's experience on Resume Insight. It covers your account profile, resume upload and analysis, career guidance caching, auto-generated portfolio creation, and access to the company skillset data that powers skill-gap reports. All endpoints read and write against your account, identified by your registered email address.
+
+<Note>
+  All endpoints on this page require an `Authorization: Bearer <token>` header. The authenticated account must have `role == "user"`. Trainer and admin tokens receive `403 Forbidden`.
+</Note>
+
+---
+
+## GET /user/info/\{email\}
+
+Fetch your account profile. The response includes everything stored on your account except your password.
+
+### Path Parameter
+
+<ParamField path="email" type="string" required>
+  Your registered email address.
+</ParamField>
+
+### Example Request
+
+```bash
+curl http://localhost:8000/user/info/alice@example.com \
+  -H "Authorization: Bearer <your_token>"
+```
+
+### Example Response
+
+```json
+{
+  "status": "success",
+  "user": {
+    "email": "alice@example.com",
+    "name": "Alice Ramesh",
+    "role": "user",
+    "detected_role": "Machine Learning Engineer",
+    "ats_score": 78,
+    "last_uploaded": "2025-07-12T10:30:00.000Z"
+  }
+}
+```
+
+---
+
+## POST /user/upload\_resume
+
+Upload your resume for automated processing. Resume Insight extracts your contact details, education, skills, and projects; scores your resume's ATS compatibility; uses AI to detect your most suitable job role; and suggests 5–8 skills you should add to strengthen your profile. Results are saved to your account and available immediately via `GET /user/history/{email}`.
+
+**Content-Type:** `multipart/form-data`
+
+### Parameters
+
+<ParamField body="email" type="string" required>
+  Your registered email address. Used to associate the analysis results with your account.
+</ParamField>
+
+<ParamField body="file" type="file" required>
+  Your resume file. Accepted formats: **PDF**, **DOCX**, **DOC**.
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:8000/user/upload_resume \
+  -H "Authorization: Bearer <your_token>" \
+  -F "email=alice@example.com" \
+  -F "file=@alice_resume.pdf"
+```
+
+### Example Response
+
+```json
+{
+  "status": "success",
+  "message": "Resume processed successfully ✅",
+  "ats_score": 78,
+  "ats_breakdown": {
+    "contact_info": 10,
+    "skills_section": 20,
+    "education": 18,
+    "experience": 15,
+    "formatting": 15
+  },
+  "word_count": 412,
+  "detected_role": "Machine Learning Engineer",
+  "suggested_skills": [
+    "MLflow",
+    "Kubernetes",
+    "Airflow",
+    "Spark",
+    "Azure ML"
+  ],
+  "structured_info": {
+    "name": "Alice Ramesh",
+    "email": "alice@example.com",
+    "phone": "+91 9876543210",
+    "skills": {
+      "technical": ["Python", "TensorFlow", "Scikit-Learn", "SQL", "Docker"],
+      "soft": ["Communication", "Team Leadership"]
+    },
+    "education": {
+      "bachelor": {
+        "degree": "B.E. Computer Science",
+        "institution": "Anna University",
+        "cgpa": "8.6"
+      }
+    },
+    "projects": [
+      {
+        "title": "Image Classification Model",
+        "description": "Built a CNN-based classifier with 94% accuracy on CIFAR-10",
+        "technologies": ["Python", "TensorFlow", "Keras"]
+      }
+    ]
+  }
+}
+```
+
+<Tip>
+  Upload a PDF with selectable (non-scanned) text for the highest extraction accuracy. Scanned image PDFs may result in incomplete skill and education data.
+</Tip>
+
+---
+
+## DELETE /user/clear\_resume/\{email\}
+
+Remove all resume analysis data from your account, including your ATS score, extracted structured info, detected role, and suggested skills. Use this before re-uploading an updated resume so that stale data does not persist alongside your new results.
+
+### Path Parameter
+
+<ParamField path="email" type="string" required>
+  Your registered email address.
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X DELETE http://localhost:8000/user/clear_resume/alice@example.com \
+  -H "Authorization: Bearer <your_token>"
+```
+
+### Example Response
+
+```json
+{
+  "status": "success",
+  "message": "Resume data cleared. Please re-upload your resume."
+}
+```
+
+---
+
+## GET /user/history/\{email\}
+
+Retrieve the full analysis results from your most recently uploaded resume. This endpoint returns the same data that was saved during `POST /user/upload_resume`, including the ATS score breakdown, extracted structured info, AI-detected role, and suggested skills.
+
+### Path Parameter
+
+<ParamField path="email" type="string" required>
+  Your registered email address.
+</ParamField>
+
+### Example Request
+
+```bash
+curl http://localhost:8000/user/history/alice@example.com \
+  -H "Authorization: Bearer <your_token>"
+```
+
+### Example Response
+
+```json
+{
+  "status": "success",
+  "structured_info": {
+    "name": "Alice Ramesh",
+    "skills": { "technical": ["Python", "TensorFlow", "SQL"] },
+    "education": { "bachelor": { "degree": "B.E. Computer Science", "cgpa": "8.6" } }
+  },
+  "ats_score": 78,
+  "ats_breakdown": {
+    "contact_info": 10,
+    "skills_section": 20,
+    "education": 18,
+    "experience": 15,
+    "formatting": 15
+  },
+  "word_count": 412,
+  "detected_role": "Machine Learning Engineer",
+  "suggested_skills": ["MLflow", "Kubernetes", "Airflow", "Spark", "Azure ML"],
+  "last_uploaded": "2025-07-12T10:30:00.000Z"
+}
+```
+
+---
+
+## GET /user/guidance/\{email\}
+
+Retrieve your cached career guidance. Resume Insight saves career roadmap and guidance results to your account so that you can revisit them without re-generating them. This endpoint returns whatever was last saved with `POST /user/guidance/{email}`.
+
+### Path Parameter
+
+<ParamField path="email" type="string" required>
+  Your registered email address.
+</ParamField>
+
+### Example Request
+
+```bash
+curl http://localhost:8000/user/guidance/alice@example.com \
+  -H "Authorization: Bearer <your_token>"
+```
+
+### Example Response
+
+```json
+{
+  "guidance": {
+    "target_role": "Machine Learning Engineer",
+    "roadmap": ["Learn MLflow", "Complete AWS ML Specialty", "Contribute to open-source ML projects"],
+    "resources": ["fast.ai", "deeplearning.ai", "Kaggle competitions"]
+  }
+}
+```
+
+---
+
+## POST /user/guidance/\{email\}
+
+Save a guidance object to your account cache. The frontend calls this after generating a career roadmap so that results are persisted and accessible on your next visit without re-running the AI.
+
+**Content-Type:** `application/json`
+
+### Path Parameter
+
+<ParamField path="email" type="string" required>
+  Your registered email address.
+</ParamField>
+
+### Request Body
+
+<ParamField body="guidance" type="object" required>
+  A free-form guidance object. The structure is flexible — typically includes `target_role`, `roadmap`, and `resources` keys but can hold any JSON data.
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:8000/user/guidance/alice@example.com \
+  -H "Authorization: Bearer <your_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "guidance": {
+      "target_role": "Machine Learning Engineer",
+      "roadmap": ["Learn MLflow", "Complete AWS ML Specialty"],
+      "resources": ["fast.ai", "deeplearning.ai"]
+    }
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "status": "success",
+  "message": "Guidance cached successfully"
+}
+```
+
+---
+
+## POST /user/portfolio
+
+Generate a shareable portfolio from your resume data and save it to your account. Resume Insight builds a structured portfolio object from your extracted skills, projects, contact details, and detected role, then stores it with a URL-friendly slug.
+
+**Content-Type:** `application/json`
+
+### Request Body
+
+<ParamField body="email" type="string" required>
+  Your registered email address. Your stored resume data is used to populate the portfolio.
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:8000/user/portfolio \
+  -H "Authorization: Bearer <your_token>" \
+  -H "Content-Type: application/json" \
+  -d '{ "email": "alice@example.com" }'
+```
+
+### Example Response
+
+```json
+{
+  "status": "success",
+  "message": "Portfolio generated successfully",
+  "slug": "alice-ramesh-machine-learning-engineer",
+  "portfolio": {
+    "name": "Alice Ramesh",
+    "headline": "Machine Learning Engineer",
+    "summary": "Passionate about building AI-driven applications with strong foundations in Python and deep learning.",
+    "skills": ["Python", "TensorFlow", "Scikit-Learn", "SQL", "Docker"],
+    "projects": [
+      {
+        "title": "Image Classification Model",
+        "description": "CNN-based classifier with 94% accuracy on CIFAR-10.",
+        "technologies": ["Python", "TensorFlow", "Keras"],
+        "github": "https://github.com/alice/image-clf",
+        "link": ""
+      }
+    ],
+    "contacts": {
+      "email": "alice@example.com",
+      "github": "",
+      "linkedin": "",
+      "phone": "+91 9876543210"
+    },
+    "role": "Machine Learning Engineer"
+  }
+}
+```
+
+<Note>
+  Upload your resume with `POST /user/upload_resume` before generating a portfolio. If no resume data is found on your account, this endpoint returns `404 Not Found`.
+</Note>
+
+---
+
+## GET /user/skillset
+
+Download the active company skillset as an Excel file (`.xlsx`). This is the same file that trainers upload via `POST /admin/upload_skillset`. Use it to see exactly which skills each company expects so you can target your resume accordingly.
+
+### Example Request
+
+```bash
+curl http://localhost:8000/user/skillset \
+  -H "Authorization: Bearer <your_token>" \
+  -o Skillset_of_Companies_Visited.xlsx
+```
+
+The response is a binary `.xlsx` file download with `Content-Disposition: attachment`.
+
+---
+
+## GET /user/skillset\_json
+
+Get the active company skillset as JSON. Each key in the response is a sheet (company/domain) and each value is an array of row objects. Use this to display skill requirements in your app without parsing an Excel file.
+
+### Example Request
+
+```bash
+curl http://localhost:8000/user/skillset_json \
+  -H "Authorization: Bearer <your_token>"
+```
+
+### Example Response
+
+```json
+{
+  "sheets": {
+    "Zoho": [
+      { "Role": "Backend Engineer", "Skills": "Python, Django, REST, PostgreSQL" },
+      { "Role": "Frontend Engineer", "Skills": "React, TypeScript, Tailwind CSS" }
+    ],
+    "Freshworks": [
+      { "Role": "Full Stack Developer", "Skills": "Node.js, Vue.js, MongoDB" }
+    ]
+  }
+}
+```

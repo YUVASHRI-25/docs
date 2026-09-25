@@ -1,0 +1,311 @@
+---
+title: "Skillset Management API: Upload and Edit Company Skills"
+sidebarTitle: "Skillset API"
+description: "Upload, preview, edit, and manage company skillset Excel files. Trainers can store multiple named skillsets and serve them to job seekers for gap analysis."
+---
+
+The Skillset Management endpoints let trainers maintain the master list of skills companies expect from candidates. You upload an Excel workbook where each sheet represents a company or domain, and Resume Insight uses that data to generate skill-gap reports for job seekers. You can replace the active skillset in one shot, append new sheets to an existing file, edit individual rows through the API, and save multiple named skillset snapshots for different recruitment drives.
+
+<Note>
+  All endpoints on this page require an `Authorization: Bearer <token>` header. The authenticated account must have `role == "trainer"`. Requests from job-seeker or admin accounts receive a `403 Forbidden` response.
+</Note>
+
+---
+
+## POST /admin/upload\_skillset
+
+Upload a new company skillset as an Excel file (`.xlsx` or `.xls`). Use `mode=replace` to overwrite the current active skillset, or `mode=append` to merge the uploaded sheets into the existing file — new sheets are added and sheets with the same name are overwritten.
+
+**Content-Type:** `multipart/form-data`
+
+### Parameters
+
+<ParamField body="file" type="file" required>
+  The Excel file to upload. Must be `.xlsx` or `.xls` with at least one sheet. CSV files are not accepted.
+</ParamField>
+
+<ParamField body="mode" type="string" default="replace">
+  Upload mode. Use `replace` to overwrite the entire skillset or `append` to merge new sheets into the existing file. Defaults to `replace`.
+</ParamField>
+
+### Example — Replace Mode
+
+```bash
+curl -X POST http://localhost:8000/admin/upload_skillset \
+  -H "Authorization: Bearer <your_token>" \
+  -F "file=@Company_Skills_2025.xlsx" \
+  -F "mode=replace"
+```
+
+### Example Response (replace)
+
+```json
+{
+  "status": "success",
+  "message": "Skillset file uploaded successfully ✅",
+  "mode": "replace",
+  "filename": "Company_Skills_2025.xlsx"
+}
+```
+
+### Example — Append Mode
+
+```bash
+curl -X POST http://localhost:8000/admin/upload_skillset \
+  -H "Authorization: Bearer <your_token>" \
+  -F "file=@New_Companies_Q2.xlsx" \
+  -F "mode=append"
+```
+
+### Example Response (append)
+
+```json
+{
+  "status": "success",
+  "message": "Skillset appended successfully! 3 sheet(s) added/updated ✅",
+  "mode": "append",
+  "sheets_added": ["Zoho", "Freshworks", "Infosys"],
+  "total_sheets": 10
+}
+```
+
+---
+
+## GET /admin/skillset\_preview
+
+Fetch the current active skillset as a JSON object. Each key in the response is a sheet name and its value is an array of row objects. Use this endpoint to inspect the skillset before editing or to populate an in-browser table editor.
+
+### Example Request
+
+```bash
+curl http://localhost:8000/admin/skillset_preview \
+  -H "Authorization: Bearer <your_token>"
+```
+
+### Example Response
+
+```json
+{
+  "status": "success",
+  "sheets": {
+    "Zoho": [
+      { "Role": "Backend Engineer", "Skills": "Python, Django, REST, PostgreSQL" },
+      { "Role": "Frontend Engineer", "Skills": "React, TypeScript, Tailwind CSS" }
+    ],
+    "Freshworks": [
+      { "Role": "Full Stack Developer", "Skills": "Node.js, Vue.js, MongoDB" }
+    ]
+  }
+}
+```
+
+<Tip>
+  If no skillset has been uploaded yet, the response returns `{ "sheets": {}, "message": "No skillset file uploaded yet" }`. Upload a file with `POST /admin/upload_skillset` first.
+</Tip>
+
+---
+
+## POST /admin/update\_skillset
+
+Push edited skillset data back to the server and overwrite the active Excel file. Send the full `sheets` object — every sheet you omit will be removed from the file. This is typically called after a user edits cells in the skillset preview table.
+
+**Content-Type:** `application/json`
+
+### Request Body
+
+<ParamField body="sheets" type="object" required>
+  A dictionary where each key is a sheet name and each value is an array of row objects. The column names must match the headers in the original Excel file.
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:8000/admin/update_skillset \
+  -H "Authorization: Bearer <your_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sheets": {
+      "Zoho": [
+        { "Role": "Backend Engineer", "Skills": "Python, Django, FastAPI, PostgreSQL" },
+        { "Role": "Data Analyst", "Skills": "Python, SQL, Power BI, Excel" }
+      ],
+      "Freshworks": [
+        { "Role": "Full Stack Developer", "Skills": "Node.js, React, MongoDB" }
+      ]
+    }
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "status": "success",
+  "message": "Skillset updated successfully"
+}
+```
+
+---
+
+## GET /admin/skillset\_uploads
+
+List all named skillset snapshots previously saved to the system. Snapshots are independent of the active skillset file — they allow trainers to maintain multiple skill profiles for different recruitment campaigns and switch between them.
+
+### Example Request
+
+```bash
+curl http://localhost:8000/admin/skillset_uploads \
+  -H "Authorization: Bearer <your_token>"
+```
+
+### Example Response
+
+```json
+{
+  "status": "success",
+  "uploads": [
+    {
+      "id": "1718023456789",
+      "name": "Campus Drive – July 2025",
+      "uploadedAt": "2025-07-10T09:30:00.000Z",
+      "sheets": {
+        "TCS": [ { "Role": "Developer", "Skills": "Java, Spring Boot" } ]
+      }
+    },
+    {
+      "id": "1718123456000",
+      "name": "Lateral Hiring – Q3",
+      "uploadedAt": "2025-07-12T14:15:00.000Z",
+      "sheets": {}
+    }
+  ]
+}
+```
+
+---
+
+## POST /admin/skillset\_uploads
+
+Save a new named skillset snapshot. Snapshots are stored in the database and identified by an auto-generated `id`. Saving a snapshot does not affect the active skillset Excel file.
+
+**Content-Type:** `application/json`
+
+### Request Body
+
+<ParamField body="name" type="string" required>
+  A human-readable label for this skillset snapshot (e.g., `"Campus Drive – July 2025"`).
+</ParamField>
+
+<ParamField body="sheets" type="object" required>
+  The skillset data to save. Same format as the `sheets` object in `POST /admin/update_skillset`.
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:8000/admin/skillset_uploads \
+  -H "Authorization: Bearer <your_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Campus Drive – July 2025",
+    "sheets": {
+      "TCS": [
+        { "Role": "Developer", "Skills": "Java, Spring Boot, Hibernate" }
+      ],
+      "Wipro": [
+        { "Role": "QA Engineer", "Skills": "Selenium, TestNG, JIRA" }
+      ]
+    }
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "status": "success",
+  "id": "1718023456789",
+  "message": "Skillset saved successfully"
+}
+```
+
+---
+
+## PUT /admin/skillset\_uploads/\{id\}
+
+Update the name and/or sheet data of an existing named skillset snapshot. The `id` is the value returned by `POST /admin/skillset_uploads`.
+
+**Content-Type:** `application/json`
+
+### Path Parameter
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the skillset snapshot to update.
+</ParamField>
+
+### Request Body
+
+<ParamField body="name" type="string" required>
+  Updated label for the skillset snapshot.
+</ParamField>
+
+<ParamField body="sheets" type="object" required>
+  Updated sheet data. Replaces the previously stored sheets entirely.
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X PUT http://localhost:8000/admin/skillset_uploads/1718023456789 \
+  -H "Authorization: Bearer <your_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Campus Drive – July 2025 (Revised)",
+    "sheets": {
+      "TCS": [
+        { "Role": "Developer", "Skills": "Java, Spring Boot, Microservices, Docker" }
+      ]
+    }
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "status": "success",
+  "message": "Skillset updated successfully"
+}
+```
+
+---
+
+## DELETE /admin/skillset\_uploads/\{id\}
+
+Permanently delete a named skillset snapshot. This action cannot be undone. The active skillset Excel file is not affected.
+
+### Path Parameter
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the skillset snapshot to delete.
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X DELETE http://localhost:8000/admin/skillset_uploads/1718023456789 \
+  -H "Authorization: Bearer <your_token>"
+```
+
+### Example Response
+
+```json
+{
+  "status": "success",
+  "message": "Skillset deleted successfully"
+}
+```
+
+<Warning>
+  Deleting a snapshot is permanent. If you think you might need it later, use `GET /admin/skillset_uploads` to export the data first, then recreate the snapshot with `POST /admin/skillset_uploads`.
+</Warning>

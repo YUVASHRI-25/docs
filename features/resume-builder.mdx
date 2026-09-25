@@ -1,0 +1,130 @@
+---
+title: "Resume Builder and Portfolio Generator in Resume Insight"
+sidebarTitle: "Resume Builder"
+description: "Use the interactive Resume Insight builder to create an ATS-optimized resume from scratch, then auto-generate a shareable portfolio from your saved data."
+---
+
+Resume Insight helps you not only analyze an existing resume but also build a new one from the ground up. The interactive resume builder guides you through each section step by step, offering real-time AI suggestions as you type to make sure your resume is structured correctly and keyword-optimized before you ever submit it to an ATS. Once your resume is saved, a single API call generates a complete portfolio page from your data — no extra work required.
+
+## Using the Resume Builder
+
+The resume builder lives in your Resume Insight dashboard and works entirely through the UI — no API calls are needed to use it. After signing in, navigate to the **Build Resume** section and work through each panel in order:
+
+<Steps>
+  <Step title="Personal Information">
+    Enter your full name, email, phone number, LinkedIn URL, and GitHub profile link. The builder validates your email and URL formats in real time so you catch errors before they appear on your resume.
+  </Step>
+  <Step title="Education">
+    Add your 10th, 12th, and undergraduate education details including institution name, location, year of graduation, and your CGPA or percentage. The builder flags missing fields that ATS systems expect to find.
+  </Step>
+  <Step title="Skills">
+    Enter your technical skills, soft skills, and areas of interest. The input field accepts comma-separated values and automatically normalizes synonyms (for example, "ReactJS" becomes "React") so your skills match industry-standard keywords.
+  </Step>
+  <Step title="Projects and Experience">
+    Add each project or internship with a title, description, technology stack, and optional GitHub or live link. Use the bullet-point mode for descriptions to ensure your formatting scores well on ATS.
+  </Step>
+  <Step title="Certifications">
+    List your certifications by their full, official names. The builder flags low-value certifications (such as generic MS Office courses) and suggests high-value alternatives based on your skill set and detected role.
+  </Step>
+  <Step title="Review and Save">
+    Preview your complete resume, review the AI suggestions highlighted in each section, and save. Your data is stored in your account and immediately available for ATS scoring, role prediction, career guidance, and portfolio generation.
+  </Step>
+</Steps>
+
+## Smart Suggestions
+
+As you fill in each section of the builder, Resume Insight provides real-time AI-powered suggestions to help you optimize as you write — not after the fact.
+
+- **Format recommendations** — if your experience descriptions are written as paragraphs rather than bullet points, the builder prompts you to convert them and shows an example of the improved format.
+- **Missing keyword alerts** — if your skills section lacks keywords that are common for your detected role (for example, a backend developer candidate missing "Docker" or "SQL"), a yellow alert appears suggesting the additions.
+- **Suggested skills based on your target role** — once the builder detects your likely role from the skills you've entered, it surfaces a short list of complementary skills that hiring managers in that role commonly look for, pulled directly from the platform's role-matching data.
+- **Certification quality signals** — certifications you enter are evaluated for industry value. High-value certifications (AWS, Azure, Google, Cisco) are highlighted in green; low-value ones are flagged with a suggestion to replace or remove them.
+
+## ATS Optimization Tips
+
+<CardGroup cols={2}>
+  <Card title="Use Standard Section Headings" icon="heading">
+    Write "Education", "Skills", "Projects", "Experience", and "Certifications" exactly. ATS systems are trained on these exact labels — creative alternatives like "What I Know" will not be recognized.
+  </Card>
+  <Card title="List Skills as Keywords" icon="list">
+    Write `Python, FastAPI, MongoDB, Docker` as a comma-separated list. Do not bury your skills inside narrative sentences like "I have experience with various backend frameworks."
+  </Card>
+  <Card title="Include Your CGPA or Percentage" icon="graduation-cap">
+    If your CGPA is 7.0 or above (or percentage is 70% or above), always include it. Many ATS systems filter candidates on academic performance cutoffs set by employers.
+  </Card>
+  <Card title="Avoid Images, Tables, and Fancy Formatting" icon="ban">
+    Images, decorative borders, multi-column layouts, and embedded tables cannot be read by ATS parsers. Everything important on your resume must be plain text in a single-column layout.
+  </Card>
+  <Card title="Use Bullet Points for Projects and Experience" icon="circle-dot">
+    Each project or internship description should start with a strong action verb (built, developed, implemented, deployed) and be written as a bullet point — not a paragraph.
+  </Card>
+  <Card title="Include Certifications by Full Name" icon="certificate">
+    Write "AWS Certified Cloud Practitioner" rather than "AWS cert" or just "cloud certification." Full official names match ATS keyword databases reliably; abbreviations often do not.
+  </Card>
+</CardGroup>
+
+## Portfolio Generation
+
+Once you have uploaded or built your resume and saved it to your account, Resume Insight can automatically generate a structured portfolio object from your data. The portfolio includes your name, headline, professional summary, skills, top projects with links, and contact details — all formatted for use in a public-facing profile or personal website.
+
+**Endpoint:** `POST /user/portfolio`
+
+```bash
+curl -X POST http://localhost:8000/user/portfolio \
+  -H "Authorization: Bearer <your_token>" \
+  -H "Content-Type: application/json" \
+  -d '{ "email": "priya.ramesh@email.com" }'
+```
+
+**Example response:**
+
+```json
+{
+  "status": "success",
+  "message": "Portfolio generated successfully",
+  "portfolio": {
+    "name": "Priya Ramesh",
+    "headline": "Full Stack Developer",
+    "summary": "Final-year CSE student with hands-on experience in Python, React, and MongoDB. Built and deployed full-stack applications including an AI-powered resume analyzer.",
+    "skills": [
+      "Python", "React", "FastAPI", "MongoDB", "Docker", "Git", "REST APIs", "AWS"
+    ],
+    "projects": [
+      {
+        "title": "AI Resume Analyzer",
+        "description": "Full-stack web application that parses resumes, calculates ATS scores, and provides AI-driven career guidance.",
+        "technologies": ["Python", "React", "MongoDB", "FastAPI"],
+        "github": "github.com/priyaramesh/resume-analyzer",
+        "link": ""
+      },
+      {
+        "title": "E-Commerce Platform",
+        "description": "Responsive shopping platform with product filtering, cart management, and secure checkout.",
+        "technologies": ["React", "Node.js", "MongoDB", "Stripe"],
+        "github": "github.com/priyaramesh/ecommerce",
+        "link": "https://priya-shop.vercel.app"
+      }
+    ],
+    "contacts": {
+      "email": "priya.ramesh@email.com",
+      "github": "github.com/priyaramesh",
+      "linkedin": "linkedin.com/in/priya-ramesh",
+      "phone": "+91 98765 43210"
+    },
+    "role": "Full Stack Developer"
+  },
+  "slug": "priya-ramesh-full-stack-developer"
+}
+```
+
+The `slug` field is a URL-safe identifier derived from your name and detected role (for example, `priya-ramesh-full-stack-developer`). You can use it to link directly to your portfolio page within the Resume Insight platform.
+
+The portfolio is saved to your account and updated each time you call this endpoint, so it always reflects your most current resume data.
+
+<Note>
+  Portfolio generation requires you to have previously uploaded a resume via `POST /user/upload_resume`. The endpoint reads your saved `structured_info` and `detected_role` from your account. If no resume has been uploaded yet, the endpoint returns a 404 error with the message `"No resume data found. Please upload a resume first."`
+</Note>
+
+<Tip>
+  Whenever you update your resume — adding new projects, certifications, or skills — re-upload it via `POST /user/upload_resume` first, then call `POST /user/portfolio` again to refresh your portfolio with the latest information.
+</Tip>

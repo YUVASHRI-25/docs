@@ -1,0 +1,230 @@
+---
+title: "Job Seeker Dashboard: Resume Analysis & Career Guidance"
+sidebarTitle: "Job Seeker"
+description: "Upload your resume for instant ATS scoring, AI role prediction, skill gap analysis, career roadmaps, and an AI chat assistant — all in one place."
+---
+
+As a job seeker on Resume Insight, you get a complete career toolkit the moment you upload your resume. The platform automatically extracts your profile, scores your resume against ATS standards, predicts the best-fit job role for your skill set, highlights the skills you should learn next, and gives you access to an AI chat assistant for personalized career advice — all without any manual configuration on your end.
+
+## What You Can Do
+
+<CardGroup cols={2}>
+  <Card title="Upload Resume" icon="file-arrow-up">
+    Upload your resume in PDF or DOCX format. Resume Insight parses it automatically and extracts your name, education, skills, certifications, projects, and contact details.
+  </Card>
+  <Card title="View ATS Score" icon="chart-bar">
+    See how well your resume performs against Applicant Tracking Systems. Get a breakdown of what's working and what you can improve to pass automated screening filters.
+  </Card>
+  <Card title="Get Role Prediction" icon="bullseye">
+    The AI analyzes your technical skills, education, and experience to predict the most suitable job role for you — along with a curated list of skills that would strengthen your profile.
+  </Card>
+  <Card title="Career Guidance" icon="map">
+    Generate a structured, personalized career roadmap powered by AI. Get step-by-step guidance tailored to your current skills and your target role.
+  </Card>
+  <Card title="AI Chat Assistant" icon="robot">
+    Ask any career question and get answers grounded in your actual resume data. The assistant understands your profile and gives advice specific to your background.
+  </Card>
+  <Card title="Portfolio Generation" icon="id-card">
+    Automatically generate a shareable portfolio page from your resume data — complete with your projects, skills, and contact links.
+  </Card>
+</CardGroup>
+
+## Your Dashboard
+
+Follow these steps each time you log in and want to analyze your resume:
+
+<Steps>
+  <Step title="Upload your resume">
+    From your dashboard, click **Upload Resume** and select a PDF or DOCX file. Resume Insight supports resumes up to standard sizes and will reject unsupported formats.
+  </Step>
+  <Step title="Review your extracted profile">
+    Once processed, your dashboard displays the structured data extracted from your resume: your name, contact details, education history (10th, 12th, and bachelor's degree with CGPA), technical and soft skills, certifications, projects, and known programming languages.
+
+    Review this section carefully — the accuracy of all downstream analysis depends on what was successfully parsed from your file.
+  </Step>
+  <Step title="Check your ATS score and breakdown">
+    Your ATS score appears as a percentage, accompanied by a detailed breakdown. This score reflects how likely your resume is to pass automated filtering systems used by most companies. Higher scores improve your chances of reaching a human reviewer.
+  </Step>
+  <Step title="See your predicted role and suggested skills">
+    The AI determines the job role that best matches your profile — for example, **Data Analyst**, **Frontend Developer**, or **Machine Learning Engineer** — and lists 5–8 skills you should add to your repertoire to become a stronger candidate for that role.
+  </Step>
+  <Step title="Generate career guidance or chat with the AI">
+    Click **Generate Guidance** to receive a structured, AI-generated roadmap for your career. Or open the **AI Chat** tab to ask specific questions such as: *"How can I transition from web development to cloud engineering?"* The assistant uses your resume as context for every answer.
+  </Step>
+</Steps>
+
+## Resume Upload
+
+To upload your resume and receive a full analysis, send a `multipart/form-data` POST request to `/user/upload_resume` with your email address and resume file.
+
+```bash
+curl -X POST http://localhost:8000/user/upload_resume \
+  -F "email=alex@example.com" \
+  -F "file=@/path/to/resume.pdf"
+```
+
+**Form fields:**
+
+<ParamField body="email" type="string" required>
+  Your registered email address. Used to store and retrieve your resume analysis results.
+</ParamField>
+
+<ParamField body="file" type="file" required>
+  Your resume file. Accepted formats: `.pdf`, `.docx`. The file is processed immediately — no separate parse step is required.
+</ParamField>
+
+**Example response:**
+
+```json
+{
+  "status": "success",
+  "message": "Resume processed successfully ✅",
+  "structured_info": {
+    "name": "Alex Johnson",
+    "email": "alex@example.com",
+    "phone": "+91 9876543210",
+    "education": {
+      "10th": { "school": "ABC High School", "percentage": "92.4%" },
+      "12th": { "school": "XYZ Junior College", "percentage": "88.6%" },
+      "bachelor": { "degree": "B.E. Computer Science", "college": "State Engineering College", "cgpa": "8.45" }
+    },
+    "skills": {
+      "technical": ["Python", "React", "Node.js", "MongoDB", "REST APIs"],
+      "programming_languages": ["Python", "JavaScript", "Java"],
+      "area_of_interest": ["Full Stack Development", "Cloud Computing"]
+    },
+    "certifications": ["AWS Cloud Practitioner", "Google Data Analytics"],
+    "projects": [
+      {
+        "title": "E-Commerce Platform",
+        "description": "Built a full-stack shopping app using React and Node.js",
+        "technologies": ["React", "Node.js", "MongoDB"]
+      }
+    ]
+  },
+  "ats_score": 78,
+  "ats_breakdown": {
+    "skills_match": 85,
+    "formatting": 72,
+    "keyword_density": 74,
+    "contact_info": 100
+  },
+  "word_count": 412,
+  "detected_role": "Full Stack Developer",
+  "suggested_skills": ["Docker", "Kubernetes", "GraphQL", "TypeScript", "Redis", "CI/CD", "AWS Lambda"]
+}
+```
+
+<ResponseField name="status" type="string">
+  `"success"` when the resume is processed without errors.
+</ResponseField>
+
+<ResponseField name="structured_info" type="object">
+  The structured data extracted from your resume, including name, education, skills, certifications, and projects.
+</ResponseField>
+
+<ResponseField name="ats_score" type="number">
+  Overall ATS score as a number out of 100.
+</ResponseField>
+
+<ResponseField name="ats_breakdown" type="object">
+  Sub-scores across individual ATS factors such as skills match, formatting, keyword density, and contact information completeness.
+</ResponseField>
+
+<ResponseField name="detected_role" type="string">
+  The AI-predicted best-fit job role based on your resume content.
+</ResponseField>
+
+<ResponseField name="suggested_skills" type="array">
+  A list of 5–8 skills recommended to strengthen your profile for the detected role.
+</ResponseField>
+
+## Career Guidance
+
+After uploading your resume, you can generate a detailed career roadmap using the `POST /guidance/generate` endpoint. Pass your `structured_info` object (returned from the upload step) as the `resume_data` field in the request body.
+
+```bash
+curl -X POST http://localhost:8000/guidance/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resume_data": {
+      "name": "Alex Johnson",
+      "skills": {
+        "technical": ["Python", "React", "MongoDB"],
+        "area_of_interest": ["Full Stack Development"]
+      },
+      "education": {
+        "bachelor": { "degree": "B.E. Computer Science", "cgpa": "8.45" }
+      }
+    }
+  }'
+```
+
+**Example response structure:**
+
+```json
+{
+  "guidance": {
+    "current_profile_summary": "You have a strong foundation in full-stack development with skills in Python, React, and MongoDB.",
+    "recommended_role": "Full Stack Developer",
+    "short_term_goals": [
+      "Complete a TypeScript course and refactor one of your existing React projects",
+      "Deploy a personal project on AWS using EC2 or Elastic Beanstalk",
+      "Contribute to an open-source project on GitHub"
+    ],
+    "long_term_goals": [
+      "Target mid-level full-stack roles at product companies within 12–18 months",
+      "Build expertise in cloud-native development (Docker, Kubernetes, serverless)"
+    ],
+    "skill_gaps": ["TypeScript", "Docker", "CI/CD pipelines", "GraphQL"],
+    "recommended_certifications": ["AWS Developer Associate", "Meta React Developer"],
+    "resume_tips": [
+      "Add quantifiable impact to your project descriptions (e.g., 'reduced load time by 40%')",
+      "Include a GitHub link prominently in your contact section"
+    ]
+  }
+}
+```
+
+You can also generate a role-specific learning roadmap using `POST /guidance/role-roadmap` by specifying your target role, current skills, and experience level.
+
+## AI Chat
+
+The AI Chat assistant answers career questions in the context of your resume. Send a POST request to `/ai/chat` with your question and your resume data, and the assistant responds with personalized advice.
+
+```bash
+curl -X POST http://localhost:8000/ai/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "I want to transition into data science. What steps should I take given my current skills?",
+    "resume_data": {
+      "skills": {
+        "technical": ["Python", "React", "MongoDB"],
+        "area_of_interest": ["Full Stack Development"]
+      },
+      "education": {
+        "bachelor": { "degree": "B.E. Computer Science", "cgpa": "8.45" }
+      }
+    }
+  }'
+```
+
+<ParamField body="query" type="string" required>
+  Your career question. Be as specific as possible — the more context you provide, the more targeted the advice.
+</ParamField>
+
+<ParamField body="resume_data" type="object">
+  Your structured resume data. Pass the `structured_info` object from the upload response. The AI uses this as context to personalize its answer.
+</ParamField>
+
+**Example response:**
+
+```json
+{
+  "response": "Given your Python background and experience with MongoDB, you already have two of the most critical skills for a data science role. I'd recommend the following path: 1) Start with NumPy, Pandas, and Matplotlib to build your data manipulation and visualization skills. 2) Work through a structured machine learning course (fast.ai or Andrew Ng's ML Specialization on Coursera). 3) Build 2–3 end-to-end projects — for example, a churn prediction model or a recommendation engine — and publish them on GitHub. 4) Learn SQL deeply, as most data science interviews include SQL rounds. 5) Once comfortable, explore scikit-learn and then move to deep learning with TensorFlow or PyTorch."
+}
+```
+
+<Tip>
+  Keep your resume updated every time you gain a new skill or complete a project. Resume Insight re-runs the full analysis on each upload, so fresher data means more accurate role predictions and better-targeted career advice.
+</Tip>

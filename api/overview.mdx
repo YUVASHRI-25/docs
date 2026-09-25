@@ -1,0 +1,139 @@
+---
+title: "Resume Insight REST API Reference Overview"
+sidebarTitle: "Overview"
+description: "Complete reference for the Resume Insight REST API — endpoints, authentication, request formats, response shapes, and status codes."
+---
+
+The Resume Insight API is a RESTful HTTP API built with FastAPI and served at `http://localhost:8000`. Every feature in the Resume Insight platform — resume uploads, ATS scoring, career guidance, trainer filtering, and admin shortlisting — is powered by this API. Requests are made over HTTP using standard JSON bodies or multipart form data, and every response is returned as JSON. You interact with the API using the `Authorization` header to identify yourself and your role, and the server enforces role-based access on all protected endpoints.
+
+## Base URL
+
+All API requests are made to the following base URL:
+
+```text
+http://localhost:8000
+```
+
+Prepend this URL to every endpoint path shown in this reference. For example, to log in, send a `POST` request to `http://localhost:8000/auth/login`.
+
+## Authentication
+
+All protected endpoints require a valid JWT Bearer token in the request header. Obtain a token by logging in via [`POST /auth/login`](/api/authentication#post-auth-login) or signing in with Google via [`POST /auth/google_signin`](/api/authentication#post-auth-google_signin).
+
+Once you have a token, pass it with every request using the `Authorization` header:
+
+```http
+Authorization: Bearer <your_token>
+```
+
+For full details on registering, logging in, and managing tokens, see the [Authentication API reference](/api/authentication).
+
+<Note>
+  Tokens are stateless JWTs. There is no server-side session to maintain — include your token on every request that requires authentication. If your token expires, log in again to obtain a fresh one.
+</Note>
+
+## Request Format
+
+Resume Insight API endpoints accept two content types depending on the operation:
+
+- **JSON body** — Used by all authentication endpoints and most read operations. Set the `Content-Type: application/json` header and send a JSON object as the request body.
+- **Multipart form data** — Used by all file-upload endpoints (resume uploads, skillset uploads). Set the `Content-Type: multipart/form-data` header and send files together with any accompanying form fields.
+
+```http
+# JSON request example
+POST /auth/login HTTP/1.1
+Content-Type: application/json
+
+{"email": "student@bitsathy.ac.in", "password": "MySecurePass1"}
+```
+
+```http
+# Multipart form data example
+POST /user/upload_resume HTTP/1.1
+Content-Type: multipart/form-data; boundary=----FormBoundary
+Authorization: Bearer <token>
+
+------FormBoundary
+Content-Disposition: form-data; name="email"
+
+student@bitsathy.ac.in
+------FormBoundary
+Content-Disposition: form-data; name="file"; filename="resume.pdf"
+Content-Type: application/pdf
+
+<binary file data>
+```
+
+## Response Format
+
+All API responses are returned as JSON. Successful responses follow this general shape:
+
+```json
+{
+  "status": "success",
+  "message": "Human-readable result description",
+  "data_key": { }
+}
+```
+
+The specific top-level fields vary by endpoint (for example, `user`, `access_token`, `results`, or `portfolio`), and each endpoint's reference page documents its exact response structure.
+
+Error responses always include a `detail` field with a human-readable description of what went wrong:
+
+```json
+{
+  "detail": "Invalid email or password ❌"
+}
+```
+
+<Tip>
+  When building client-side error handling, always check the `detail` field of non-2xx responses — it describes the specific problem and often includes actionable context.
+</Tip>
+
+## HTTP Status Codes
+
+The API uses standard HTTP status codes to indicate the outcome of every request.
+
+| Code | Name | When it occurs |
+|------|------|----------------|
+| `200` | OK | The request succeeded and a response body is returned. |
+| `201` | Created | A new resource (such as a user account) was successfully created. |
+| `400` | Bad Request | The request was malformed, contained invalid values, or the uploaded file could not be processed. |
+| `401` | Unauthorized | The `Authorization` header is missing, the token is invalid, or the token has expired. |
+| `403` | Forbidden | The request is authenticated but your role does not have permission to access this endpoint. |
+| `404` | Not Found | The requested resource (user, file, or record) does not exist. |
+| `409` | Conflict | A resource with the same identifier already exists (for example, duplicate email on registration). |
+| `422` | Unprocessable Entity | The request body passed validation but contains semantic errors (FastAPI validation failure). |
+| `500` | Internal Server Error | An unexpected error occurred on the server side. |
+
+## Endpoint Groups
+
+The API is organized into four groups. Select a group below to jump to its full reference.
+
+<CardGroup cols={2}>
+  <Card title="Resume & Analysis" icon="file-lines" href="/api/resume-upload">
+    Upload resumes, retrieve ATS scores, view skill gap analysis, generate AI career roadmaps, and build portfolio pages.
+  </Card>
+  <Card title="Platform Profiles" icon="code-branch" href="/api/github">
+    Fetch and analyze coding platform activity from GitHub, LeetCode, and CodeChef to enrich candidate profiles.
+  </Card>
+  <Card title="Trainer Endpoints" icon="filter" href="/api/filter-resumes">
+    Bulk-upload and filter student resumes by CGPA, skills, department, and ATS score. Manage skillset data and run AI-powered top-N ranking.
+  </Card>
+  <Card title="User & Auth" icon="user" href="/api/user-dashboard">
+    Manage your account, view resume history, save career guidance, and generate portfolio pages from your resume data.
+  </Card>
+</CardGroup>
+
+## Interactive Docs
+
+Resume Insight's FastAPI backend automatically generates two interactive API documentation interfaces you can use to explore and test endpoints directly from your browser — no additional tooling required.
+
+| Interface | URL | Description |
+|-----------|-----|-------------|
+| **Swagger UI** | `http://localhost:8000/docs` | Interactive interface where you can read endpoint details and send live test requests. |
+| **ReDoc** | `http://localhost:8000/redoc` | Clean, read-only reference view organized by tag — ideal for browsing the full API surface. |
+
+<Info>
+  Both documentation interfaces are auto-generated from the API source code and always reflect the current state of the running server. Use Swagger UI when you want to test an endpoint interactively, and ReDoc when you want a printable, structured overview.
+</Info>

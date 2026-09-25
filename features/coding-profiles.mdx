@@ -1,0 +1,191 @@
+---
+title: "Coding Profile Analysis: GitHub, LeetCode, and CodeChef"
+sidebarTitle: "Coding Profiles"
+description: "Connect your GitHub, LeetCode, and CodeChef profiles to enrich your Resume Insight candidate profile with real coding activity and platform metrics."
+---
+
+Resume Insight goes beyond your uploaded PDF by pulling live data directly from the coding platforms where you actually build and practice. Linking your GitHub, LeetCode, and CodeChef profiles gives recruiters and trainers a complete picture of your technical activity — your repository contributions, problem-solving consistency, and competitive programming rank — all in one place alongside your resume.
+
+## Supported Platforms
+
+<CardGroup cols={3}>
+  <Card title="GitHub" icon="github">
+    Analyze your repositories, original projects, pull requests, and contribution history to showcase real-world development activity.
+  </Card>
+  <Card title="LeetCode" icon="code">
+    Surface your problem-solving stats — total solved, easy/medium/hard breakdown, contest ranking, and recent submission activity.
+  </Card>
+  <Card title="CodeChef" icon="trophy">
+    Highlight your competitive programming rating, star tier, global and country rank, badges earned, and problems solved across learning paths.
+  </Card>
+</CardGroup>
+
+## GitHub Analysis
+
+GitHub analysis measures your actual development output — not just what you list on your resume.
+
+**What's measured:**
+- Total repositories (public)
+- Original repositories you created vs. forked repositories
+- Number of pull requests merged
+- Contribution metrics across the account
+
+**Endpoint:** `GET /github/analyze_github/{user_input}`
+
+You can pass either a plain username or a full GitHub profile URL — Resume Insight extracts the username automatically from either format.
+
+| Query Parameter | Required | Description |
+|-----------------|----------|-------------|
+| `token` | Recommended | Your GitHub Personal Access Token for authenticated API access |
+
+```bash
+# Using a username
+curl "http://localhost:8000/github/analyze_github/priyaramesh?token=ghp_yourtoken"
+
+# Using a full profile URL
+curl "http://localhost:8000/github/analyze_github/https%3A%2F%2Fgithub.com%2Fpriyaramesh?token=ghp_yourtoken"
+```
+
+**Example response:**
+
+```json
+{
+  "username": "priyaramesh",
+  "github_metrics": {
+    "total_repos": 18,
+    "original_repos": 14,
+    "forked_repos": 4,
+    "prs_merged": 12,
+    "total_commits_last_year": 247,
+    "starred_repos": 32,
+    "followers": 8,
+    "following": 15
+  }
+}
+```
+
+<Note>
+  A GitHub Personal Access Token is required for full metric access. You can generate one from your GitHub account under **Settings → Developer settings → Personal access tokens**. Pass it as a query parameter with `?token=YOUR_TOKEN`. Without a token, the endpoint will return an error asking you to provide one.
+</Note>
+
+## LeetCode Analysis
+
+LeetCode analysis gives a clear picture of your algorithmic problem-solving ability and consistency.
+
+**What's measured:**
+- Total problems solved
+- Breakdown by difficulty: easy, medium, and hard
+- Contest participation and ranking
+- Acceptance rate
+- Recent submission activity graph
+
+**Endpoint:** `GET /leetcode/analyze_leetcode/{username}`
+
+```bash
+curl http://localhost:8000/leetcode/analyze_leetcode/priyaramesh
+```
+
+**Example response:**
+
+```json
+{
+  "profile": {
+    "username": "priyaramesh",
+    "total_solved": 183,
+    "easy_solved": 74,
+    "medium_solved": 89,
+    "hard_solved": 20,
+    "acceptance_rate": "62.4%",
+    "ranking": 148203,
+    "contest_rating": 1485,
+    "contest_attended": 9
+  },
+  "analysis": {
+    "difficulty_distribution": {
+      "easy": "40.4%",
+      "medium": "48.6%",
+      "hard": "10.9%"
+    },
+    "strength": "Solid foundation in medium problems",
+    "recommendation": "Focus on more hard problems to improve contest ranking"
+  },
+  "activity_graph": [
+    { "date": "2025-01-10", "submissions": 4 },
+    { "date": "2025-01-11", "submissions": 7 },
+    { "date": "2025-01-12", "submissions": 2 }
+  ]
+}
+```
+
+## CodeChef Analysis
+
+CodeChef analysis surfaces your competitive programming credentials including your star rating, contest rank, and learning progress.
+
+**What's measured:**
+- Current rating and star tier (1★ through 7★)
+- Global and country rank
+- Badges earned
+- Total problems solved
+- Learning and practice path completion
+
+**Endpoint:** `GET /codechef/analyze_codechef/{user_input}`
+
+As with GitHub, you can pass either a plain username or a full CodeChef profile URL.
+
+```bash
+# Using a username
+curl http://localhost:8000/codechef/analyze_codechef/priyaramesh
+
+# Using a full profile URL
+curl "http://localhost:8000/codechef/analyze_codechef/https%3A%2F%2Fwww.codechef.com%2Fusers%2Fpriyaramesh"
+```
+
+**Example response:**
+
+```json
+{
+  "profile": {
+    "Profile_URL": "https://www.codechef.com/users/priyaramesh",
+    "Rating": 1642,
+    "Star_Rating": "3★",
+    "Global_Rank": 24871,
+    "Country_Rank": 8103,
+    "Badges": ["Problem Solver", "Contest Participant"],
+    "Total_Solved": 97,
+    "Learning_Paths": [
+      "Data Structures and Algorithms",
+      "Python Programming"
+    ],
+    "Practice_Paths": [
+      "Beginner Problems",
+      "Easy Problems"
+    ]
+  }
+}
+```
+
+## Combined Analysis
+
+If you want to analyze a resume alongside all three coding profiles in a single request, use the combined endpoint. This is the most efficient option for trainers and admins who want a complete candidate overview in one API call.
+
+**Endpoint:** `POST /analyze_all`
+
+Pass your resume as a file upload and include any coding platform usernames as optional query parameters.
+
+| Query Parameter | Required | Description |
+|-----------------|----------|-------------|
+| `github` | Optional | GitHub username or profile URL |
+| `leetcode` | Optional | LeetCode username |
+| `codechef` | Optional | CodeChef username or profile URL |
+| `token` | Optional | GitHub token (required if `github` is provided) |
+
+```bash
+curl -X POST "http://localhost:8000/analyze_all?github=priyaramesh&leetcode=priyaramesh&codechef=priyaramesh&token=ghp_yourtoken" \
+  -F "file=@/path/to/resume.pdf"
+```
+
+The response is a single JSON object with top-level keys `resume`, `github`, `leetcode`, and `codechef`, each containing the same data you would receive from the individual endpoints. If a platform analysis fails (for example, an invalid username), the response includes a `github_error`, `leetcode_error`, or `codechef_error` key with the specific error message, while the rest of the response remains intact.
+
+<Tip>
+  For GitHub and CodeChef, you can pass either a plain username (e.g., `priyaramesh`) or a full profile URL (e.g., `https://github.com/priyaramesh`). Resume Insight automatically extracts the username from the URL so you don't need to parse it yourself.
+</Tip>

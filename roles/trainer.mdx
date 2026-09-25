@@ -1,0 +1,282 @@
+---
+title: "Trainer Dashboard: Screen and Rank Student Resumes"
+sidebarTitle: "Trainer"
+description: "Filter, rank, and manage student resumes in bulk using AI-powered screening — with real-time streaming results and customizable skillset management."
+---
+
+Placement trainers and coordinators use Resume Insight to systematically evaluate large batches of student resumes. Rather than reviewing each file manually, you upload a set of resumes, define your filter criteria — minimum CGPA, required skills, degree type, area of interest, and more — and let the platform surface only the candidates who match. The trainer dashboard is built for high-volume screening workflows where accuracy and speed both matter.
+
+## What You Can Do
+
+<CardGroup cols={2}>
+  <Card title="Bulk Resume Filtering" icon="filter">
+    Upload multiple student resumes at once and apply multi-criteria filters across academic scores, skills, department, degree, language, and area of interest to instantly narrow the pool.
+  </Card>
+  <Card title="Skillset Management" icon="table">
+    Upload and maintain an Excel-based skillset reference that maps companies to the skills they require. Students can view this data to align their preparation with placement expectations.
+  </Card>
+  <Card title="Top-N AI Ranking" icon="trophy">
+    Upload resumes for AI-assisted scoring and ranking. The system scores each candidate across skills, internships, projects, certifications, and academics, then reranks using an LLM for a final shortlist.
+  </Card>
+  <Card title="Real-Time Streaming Results" icon="bolt">
+    Use the streaming endpoint to see per-file progress as each resume is processed, rather than waiting for the entire batch to complete. Ideal for large uploads.
+  </Card>
+</CardGroup>
+
+## Getting Trainer Access
+
+The `trainer` role grants you access to all bulk-screening and skillset management endpoints. You register with this role explicitly — it is not automatically assigned.
+
+To create a trainer account, call `POST /auth/register` and set `role` to `"trainer"`:
+
+```bash
+curl -X POST http://localhost:8000/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "trainer@placement.edu",
+    "password": "SecurePass123",
+    "role": "trainer"
+  }'
+```
+
+Once registered, log in via `POST /auth/login` to receive your JWT access token:
+
+```bash
+curl -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "trainer@placement.edu",
+    "password": "SecurePass123"
+  }'
+```
+
+The response includes an `access_token`. Use this token in the `Authorization` header for all trainer-specific requests.
+
+<Note>
+  Every trainer endpoint requires a valid Bearer token that carries the `trainer` role. Requests without a token, or with a token belonging to a `user` or `admin` role, will be rejected with `403 Forbidden`.
+</Note>
+
+## Filtering Resumes
+
+Submit a batch of resume files along with your filter criteria to `POST /admin/filter_uploaded_resumes`. The endpoint parses every file, applies your filters, and returns only the candidates who pass all criteria.
+
+**Filter parameters:**
+
+<ParamField body="files" type="file[]" required>
+  One or more resume files (PDF or DOCX). Upload them as `multipart/form-data`.
+</ParamField>
+
+<ParamField body="cgpa" type="number">
+  Minimum CGPA (e.g., `7.5`). Candidates below this threshold are excluded.
+</ParamField>
+
+<ParamField body="cgpa_max" type="number">
+  Maximum CGPA. Useful if you want to target a specific CGPA range.
+</ParamField>
+
+<ParamField body="tenth" type="number">
+  Minimum 10th standard percentage (e.g., `75`).
+</ParamField>
+
+<ParamField body="twelfth" type="number">
+  Minimum 12th standard percentage (e.g., `80`).
+</ParamField>
+
+<ParamField body="ats" type="number">
+  Minimum ATS score (out of 100). Only candidates whose resumes score at or above this value are included.
+</ParamField>
+
+<ParamField body="skills" type="string">
+  Comma-separated list of required technical skills (e.g., `"Python, React, SQL"`). A candidate must possess **all** listed skills to pass this filter.
+</ParamField>
+
+<ParamField body="language" type="string">
+  Required human language proficiency (e.g., `"Tamil"` or `"English"`). Matched case-insensitively against the languages listed in each resume.
+</ParamField>
+
+<ParamField body="department" type="string">
+  Degree department or branch (e.g., `"computer science"`, `"electronics"`). Matched against the bachelor's degree field in the resume.
+</ParamField>
+
+<ParamField body="degree" type="string">
+  Degree type or name substring (e.g., `"B.E."`, `"B.Tech"`). Matched case-insensitively against the bachelor's degree field.
+</ParamField>
+
+<ParamField body="area_of_interest" type="string">
+  Comma-separated areas of interest (e.g., `"Machine Learning, Data Science"`). A candidate must have at least one matching area listed in their resume.
+</ParamField>
+
+**Example — filter for Python + SQL developers with CGPA ≥ 7.5:**
+
+```bash
+curl -X POST http://localhost:8000/admin/filter_uploaded_resumes \
+  -H "Authorization: Bearer <your_trainer_token>" \
+  -F "files=@/resumes/student1.pdf" \
+  -F "files=@/resumes/student2.pdf" \
+  -F "files=@/resumes/student3.pdf" \
+  -F "cgpa=7.5" \
+  -F "skills=Python, SQL" \
+  -F "ats=60"
+```
+
+**Example response:**
+
+```json
+{
+  "count": 2,
+  "results": [
+    {
+      "filename": "student1.pdf",
+      "name": "Priya Ramesh",
+      "email": "priya@college.edu",
+      "phone": "+91 9876543210",
+      "ats_score": 82,
+      "education": {
+        "10th": { "percentage": "94%" },
+        "12th": { "percentage": "91%" },
+        "bachelor": { "degree": "B.E. Computer Science", "cgpa": "8.7" }
+      },
+      "skills": {
+        "technical": ["Python", "SQL", "Pandas", "Flask", "NumPy"],
+        "area_of_interest": ["Data Science", "Machine Learning"]
+      },
+      "languages": ["English", "Tamil"],
+      "area_of_interest": ["Data Science", "Machine Learning"]
+    },
+    {
+      "filename": "student2.pdf",
+      "name": "Karthik Sundar",
+      "email": "karthik@college.edu",
+      "phone": "+91 9823456789",
+      "ats_score": 71,
+      "education": {
+        "10th": { "percentage": "88%" },
+        "12th": { "percentage": "85%" },
+        "bachelor": { "degree": "B.Tech Information Technology", "cgpa": "7.9" }
+      },
+      "skills": {
+        "technical": ["Python", "SQL", "Django", "REST APIs", "PostgreSQL"],
+        "area_of_interest": ["Backend Development", "Data Engineering"]
+      },
+      "languages": ["English"],
+      "area_of_interest": ["Backend Development", "Data Engineering"]
+    }
+  ]
+}
+```
+
+## Real-Time Streaming
+
+For large batches, use `POST /admin/filter_uploaded_resumes_stream` instead. This endpoint returns a **Server-Sent Events (SSE)** stream so you can display per-file progress in your interface as resumes are processed — rather than waiting for the entire batch to complete.
+
+The stream sends one JSON event per file processed, followed by a final completion event.
+
+**Connecting to the stream (curl):**
+
+```bash
+curl -N -X POST http://localhost:8000/admin/filter_uploaded_resumes_stream \
+  -H "Authorization: Bearer <your_trainer_token>" \
+  -F "files=@/resumes/student1.pdf" \
+  -F "files=@/resumes/student2.pdf" \
+  -F "files=@/resumes/student3.pdf" \
+  -F "cgpa=7.0" \
+  -F "skills=Java, Spring Boot"
+```
+
+**Example SSE output:**
+
+```
+data: {"progress": 1, "processed": 1, "total": 3, "latest_filename": "student1.pdf", "latest_name": "Priya Ramesh", "results_so_far": [...]}
+
+data: {"progress": 2, "processed": 1, "total": 3, "latest_filename": "student2.pdf", "latest_name": "Karthik Sundar", "results_so_far": [...]}
+
+data: {"progress": 3, "processed": 2, "total": 3, "latest_filename": "student3.pdf", "latest_name": "Divya Krishnan", "results_so_far": [...]}
+
+data: {"done": true, "results": [...], "count": 2}
+```
+
+<ResponseField name="progress" type="number">
+  The index of the file just processed (1-based), out of `total`.
+</ResponseField>
+
+<ResponseField name="processed" type="number">
+  How many files have passed all filters so far.
+</ResponseField>
+
+<ResponseField name="total" type="number">
+  The total number of files submitted.
+</ResponseField>
+
+<ResponseField name="latest_filename" type="string">
+  The filename of the resume just processed.
+</ResponseField>
+
+<ResponseField name="results_so_far" type="array">
+  Cumulative list of all candidates who have passed the filters up to this point.
+</ResponseField>
+
+<ResponseField name="done" type="boolean">
+  Present only on the final event. When `true`, the stream is complete and `results` contains the full filtered list.
+</ResponseField>
+
+<Tip>
+  In your frontend, listen to SSE events with the browser's `EventSource` API or an SSE client library. Update a progress bar using `progress / total` and append newly passing candidates to your results table as they arrive.
+</Tip>
+
+## Managing Skillsets
+
+You can upload and maintain an Excel file that maps companies to the skills they expect from candidates. Students can view this skillset data from their dashboard to guide their preparation.
+
+The skillset management endpoints — upload, preview, update, and delete — are all available under `/admin/skillset_*`. You can upload a new file, append sheets from a second file, or edit individual rows through the API.
+
+<Info>
+  The skillset file is shared with all students. When you update or replace it, every student's view refreshes automatically. Use the `mode=append` option when uploading to add new company sheets without overwriting existing ones.
+</Info>
+
+## Top-N AI Ranking
+
+Beyond basic filtering, you can run an AI-assisted ranking pass that scores every uploaded resume across skills breadth, internship experience, project count, certifications, and academic performance — then uses an LLM to rerank the shortlist for the most competitive candidates.
+
+The workflow is a two-step process:
+
+1. **Upload resumes** via `POST /admin/top_resume_filter/upload` — the system extracts and stores structured data for each file.
+2. **Request the top N candidates** via `POST /admin/top_resume_filter/top_n` — specify how many candidates you want (`top_n`) and optionally a natural-language command such as `"Give me the top 10 students"`.
+
+<Accordion title="Sample top_n request and response">
+
+```bash
+curl -X POST http://localhost:8000/admin/top_resume_filter/top_n \
+  -H "Authorization: Bearer <your_trainer_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "top_n": 5,
+    "use_openrouter": true
+  }'
+```
+
+```json
+{
+  "status": "success",
+  "count": 5,
+  "results": [
+    {
+      "rank": 1,
+      "candidate_name": "Divya Krishnan",
+      "key_skills": ["Python", "Machine Learning", "TensorFlow", "SQL", "Pandas"],
+      "score": 87.5,
+      "summary": "Selected for strong skills (14), experience entries (2), projects (4), and certifications (3).",
+      "email": "divya@college.edu"
+    },
+    {
+      "rank": 2,
+      "candidate_name": "Priya Ramesh",
+      "key_skills": ["Java", "Spring Boot", "MySQL", "REST APIs", "Docker"],
+      "score": 81.0,
+      "summary": "Selected for strong skills (12), experience entries (2), projects (3), and certifications (2).",
+      "email": "priya@college.edu"
+    }
+  ]
+}
+```
+
+</Accordion>

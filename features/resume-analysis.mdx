@@ -1,0 +1,213 @@
+---
+title: "Resume Parsing: Extract Skills, Education, and Experience"
+sidebarTitle: "Resume Analysis"
+description: "Upload your PDF or DOCX resume and Resume Insight automatically extracts skills, education, experience, and contact data into structured JSON."
+---
+
+Resume Insight reads your uploaded resume and converts it into structured, machine-readable data in seconds. Whether you upload a PDF or a Word document, the AI-powered parser pulls out every key detail — your name and contact information, educational history, technical and soft skills, internships, projects, and certifications — so the rest of the platform can score, analyze, and guide you accurately. You never need to re-enter your information manually.
+
+## Supported Formats
+
+Resume Insight accepts the following file types:
+
+| Format | Extension | Notes |
+|--------|-----------|-------|
+| PDF | `.pdf` | Best compatibility; recommended for most users |
+| Word Document | `.docx` | Fully supported |
+| Legacy Word | `.doc` | Supported; convert to `.docx` for best results |
+
+For optimal parsing accuracy, keep your resume under **5 MB**. Larger files are accepted but may take slightly longer to process.
+
+<Note>
+  You will get the most accurate extraction results when your resume uses clean, standard formatting — avoid multi-column layouts, text boxes, headers/footers with important content, or embedded images containing text. Plain single-column PDFs parse best.
+</Note>
+
+## What Gets Extracted
+
+Resume Insight extracts data across four major categories. Each tab below shows the exact fields returned and an example.
+
+<Tabs>
+  <Tab title="Personal Info">
+    The parser identifies your name, primary contact details, and professional profile links.
+
+    ```json
+    {
+      "name": "Priya Ramesh",
+      "email": "priya.ramesh@email.com",
+      "phone": "+91 98765 43210",
+      "linkedin": "linkedin.com/in/priya-ramesh",
+      "github": "github.com/priyaramesh",
+      "leetcode": "leetcode.com/u/priyaramesh",
+      "codechef": "codechef.com/users/priyaramesh"
+    }
+    ```
+  </Tab>
+  <Tab title="Education">
+    Education is extracted at each level — 10th, 12th, and undergraduate degree — including institution names, years, grades, and locations.
+
+    ```json
+    {
+      "education": {
+        "10th": {
+          "school": "Sri Venkateswara Matriculation School",
+          "location": "Chennai, Tamil Nadu",
+          "year": "2019",
+          "percentage": "92%"
+        },
+        "12th": {
+          "school": "Sri Venkateswara Higher Secondary School",
+          "location": "Chennai, Tamil Nadu",
+          "year": "2021",
+          "percentage": "88%"
+        },
+        "bachelor": {
+          "institute": "Anna University",
+          "location": "Chennai, Tamil Nadu",
+          "degree": "B.E. Computer Science and Engineering",
+          "expected_graduation": "2025",
+          "cgpa": "8.6"
+        }
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="Skills">
+    Skills are split into **technical** skills, **soft** skills, and **areas of interest** so the platform can match you to roles and detect gaps accurately.
+
+    ```json
+    {
+      "skills": {
+        "technical": [
+          "Python", "React", "FastAPI", "MongoDB",
+          "Docker", "Git", "REST APIs", "SQL"
+        ],
+        "soft": [
+          "Communication", "Teamwork", "Problem Solving", "Adaptability"
+        ],
+        "area_of_interest": [
+          "Machine Learning", "Web Development", "Data Science"
+        ]
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="Experience">
+    Internships, projects, and certifications are each extracted into separate arrays so the platform can evaluate your practical experience independently.
+
+    ```json
+    {
+      "internships": [
+        {
+          "company": "TechCorp Solutions",
+          "role": "Backend Developer Intern",
+          "duration": "June 2024 – August 2024",
+          "description": "Built REST APIs using FastAPI and integrated MongoDB"
+        }
+      ],
+      "projects": [
+        {
+          "title": "AI Resume Analyzer",
+          "description": "Web app that parses resumes and returns ATS scores",
+          "technologies": ["Python", "React", "MongoDB"],
+          "github": "github.com/priyaramesh/resume-analyzer"
+        }
+      ],
+      "certificates": [
+        "AWS Cloud Practitioner",
+        "Google Data Analytics Certificate",
+        "HackerRank Python (Gold)"
+      ]
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Uploading a Resume
+
+To parse a resume without saving it to an account, send a multipart form request to the raw upload endpoint. No authentication is required for this endpoint.
+
+**Endpoint:** `POST /resume/upload_resume`
+
+```bash
+curl -X POST http://localhost:8000/resume/upload_resume \
+  -F "file=@/path/to/your_resume.pdf"
+```
+
+**Example response:**
+
+```json
+{
+  "data": {
+    "name": "Priya Ramesh",
+    "email": "priya.ramesh@email.com",
+    "phone": "+91 98765 43210",
+    "linkedin": "linkedin.com/in/priya-ramesh",
+    "github": "github.com/priyaramesh",
+    "leetcode": "",
+    "codechef": "",
+    "languages": ["English", "Tamil"],
+    "education": {
+      "bachelor": {
+        "institute": "Anna University",
+        "degree": "B.E. Computer Science and Engineering",
+        "cgpa": "8.6",
+        "expected_graduation": "2025"
+      }
+    },
+    "skills": {
+      "technical": ["Python", "React", "FastAPI", "MongoDB", "Docker", "Git"],
+      "soft": ["Communication", "Teamwork"],
+      "area_of_interest": ["Web Development", "Machine Learning"]
+    },
+    "internships": [],
+    "projects": [
+      {
+        "title": "AI Resume Analyzer",
+        "description": "Full-stack web application for resume parsing and ATS scoring",
+        "technologies": ["Python", "React", "MongoDB"]
+      }
+    ],
+    "certificates": ["AWS Cloud Practitioner"],
+    "summary": "Final-year CSE student with experience in full-stack development..."
+  },
+  "ats_score": 74,
+  "ats_breakdown": {
+    "Section Coverage": 20,
+    "Contact Info": 10,
+    "Word Count": 5,
+    "Bullet Points": 10,
+    "Action + Achievements": 12,
+    "Skills Strength": 15,
+    "Soft Skills & Certs": 4,
+    "Formatting Penalty": -2,
+    "Total ATS Score": 74
+  },
+  "word_count": 612
+}
+```
+
+## Resume Data in User Context
+
+When you upload a resume while logged in to your account, use the authenticated endpoint instead. This saves the extracted data — along with your ATS score, detected role, and AI skill suggestions — so you can access it later from your dashboard or via the history endpoint.
+
+**Endpoint:** `POST /user/upload_resume`
+
+```bash
+curl -X POST http://localhost:8000/user/upload_resume \
+  -H "Authorization: Bearer <your_token>" \
+  -F "email=priya.ramesh@email.com" \
+  -F "file=@/path/to/your_resume.pdf"
+```
+
+**Retrieve saved resume data:**
+
+```bash
+curl http://localhost:8000/user/history/priya.ramesh@email.com \
+  -H "Authorization: Bearer <your_token>"
+```
+
+The history response includes your full `structured_info`, `ats_score`, `ats_breakdown`, `detected_role`, `suggested_skills`, and the timestamp of your last upload.
+
+<Note>
+  The raw `POST /resume/upload_resume` endpoint processes and returns your resume data but **does not save it to your account**. To persist your results and access them later from your dashboard or the history endpoint, always use `POST /user/upload_resume` with your email and a valid auth token.
+</Note>

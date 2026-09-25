@@ -1,0 +1,384 @@
+---
+title: "Authentication API: Register, Login, and Token Management"
+sidebarTitle: "Auth API"
+description: "Reference for all Resume Insight authentication endpoints — register, login, Google Sign-In, token verification, password management, and logout."
+---
+
+Resume Insight uses JWT Bearer tokens for API authentication. Every token is short-lived, stateless, and scoped to your account's role — `user`, `trainer`, or `admin`. You obtain a token either by logging in with your email and password via `POST /auth/login`, or by authenticating through Google via `POST /auth/google_signin`. Once issued, you include the token in every subsequent request using the `Authorization: Bearer <token>` header. When a token expires, log in again to receive a fresh one — there is no token-refresh mechanism. All authentication endpoints are available at the `/auth` prefix.
+
+---
+
+## POST /auth/register
+
+Creates a new Resume Insight account. Passwords are stored using bcrypt hashing. Email addresses are matched case-insensitively, so `Student@bitsathy.ac.in` and `student@bitsathy.ac.in` are treated as the same account.
+
+### Request Body
+
+<ParamField body="email" type="string" required>
+  The email address for the new account. Must be unique across the platform.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  The password for the new account. Stored securely using bcrypt hashing.
+</ParamField>
+
+<ParamField body="role" type="string" default="user">
+  The role for the account. Accepted values are `user`, `trainer`, and `admin`. Defaults to `user` if omitted.
+</ParamField>
+
+<Tabs>
+  <Tab title="Request">
+    ```json
+    {
+      "email": "student@bitsathy.ac.in",
+      "password": "MySecurePass1",
+      "role": "user"
+    }
+    ```
+  </Tab>
+  <Tab title="Response — 201 Created">
+    ```json
+    {
+      "status": "success",
+      "message": "User registered ✅",
+      "role": "user",
+      "user": {
+        "_id": "6651a2f3c4e8d10012a4b3c1",
+        "email": "student@bitsathy.ac.in",
+        "role": "user"
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="Response — 409 Conflict">
+    ```json
+    {
+      "detail": "User already exists ❌"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Response Fields
+
+<ResponseField name="status" type="string">
+  Always `"success"` on a successful registration.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Human-readable confirmation message.
+</ResponseField>
+
+<ResponseField name="role" type="string">
+  The role assigned to the new account (`user`, `trainer`, or `admin`).
+</ResponseField>
+
+<ResponseField name="user" type="object">
+  The created user record. Contains `_id`, `email`, and `role`. The `password` field is never returned.
+</ResponseField>
+
+<Note>
+  Registration does **not** issue a JWT token. After registering, call `POST /auth/login` with the same credentials to obtain an `access_token` you can use for authenticated requests.
+</Note>
+
+---
+
+## POST /auth/login
+
+Authenticates an existing user and returns a JWT access token. Use this token for all subsequent requests by passing it in the `Authorization: Bearer <token>` header. Supports both bcrypt-hashed and plain-text stored passwords for compatibility.
+
+### Request Body
+
+<ParamField body="email" type="string" required>
+  The email address associated with the account. Matched case-insensitively.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  The account password.
+</ParamField>
+
+<Tabs>
+  <Tab title="Request">
+    ```json
+    {
+      "email": "student@bitsathy.ac.in",
+      "password": "MySecurePass1"
+    }
+    ```
+  </Tab>
+  <Tab title="Response — 200 OK">
+    ```json
+    {
+      "status": "success",
+      "message": "Login successful as user ✅",
+      "role": "user",
+      "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2NjUxYTJmM...",
+      "token_type": "bearer",
+      "user": {
+        "_id": "6651a2f3c4e8d10012a4b3c1",
+        "email": "student@bitsathy.ac.in",
+        "role": "user"
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="Response — 401 Unauthorized">
+    ```json
+    {
+      "detail": "Invalid email or password ❌"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Response Fields
+
+<ResponseField name="access_token" type="string">
+  The signed JWT Bearer token. Pass this in the `Authorization` header of every protected request.
+</ResponseField>
+
+<ResponseField name="token_type" type="string">
+  Always `"bearer"`. Use this value as the prefix when setting the `Authorization` header.
+</ResponseField>
+
+<ResponseField name="role" type="string">
+  The role of the authenticated user — `user`, `trainer`, or `admin`. Role-restricted endpoints check this value.
+</ResponseField>
+
+<ResponseField name="user" type="object">
+  The authenticated user record (without password). Includes `_id`, `email`, and `role`.
+</ResponseField>
+
+After a successful login, store the `access_token` and attach it to every subsequent request:
+
+```http
+GET /user/info/student@bitsathy.ac.in HTTP/1.1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+---
+
+## POST /auth/google_signin
+
+Exchanges a Google OAuth ID token for a Resume Insight JWT. This endpoint verifies the Google token server-side, confirms the email domain, and then creates or retrieves the matching Resume Insight account before issuing a JWT. Accounts authenticated through this endpoint are always assigned the `user` role regardless of any previously stored role.
+
+<Warning>
+  Google Sign-In is restricted to **@bitsathy.ac.in** institutional email addresses only. Attempting to sign in with any other Google account returns a `403 Forbidden` error.
+</Warning>
+
+### Request Body
+
+<ParamField body="token" type="string" required>
+  The Google OAuth ID token obtained from your Google Sign-In client flow (e.g., from the `credential` field of the Google Identity Services response).
+</ParamField>
+
+<Tabs>
+  <Tab title="Request">
+    ```json
+    {
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjFlOWdkazcifQ..."
+    }
+    ```
+  </Tab>
+  <Tab title="Response — 200 OK">
+    ```json
+    {
+      "status": "success",
+      "message": "Google Sign-In successful as user ✅",
+      "role": "user",
+      "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "token_type": "bearer",
+      "user": {
+        "_id": "6651b3e0c4e8d10012a4b3d9",
+        "email": "student@bitsathy.ac.in",
+        "role": "user",
+        "auth_method": "google"
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="Response — 403 Forbidden">
+    ```json
+    {
+      "detail": "Only @bitsathy.ac.in email accounts are allowed to sign in."
+    }
+    ```
+  </Tab>
+  <Tab title="Response — 401 Unauthorized">
+    ```json
+    {
+      "detail": "Invalid Google token"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Response Fields
+
+<ResponseField name="access_token" type="string">
+  A Resume Insight JWT token. Use it identically to the token returned by `POST /auth/login`.
+</ResponseField>
+
+<ResponseField name="role" type="string">
+  Always `"user"` for Google Sign-In accounts.
+</ResponseField>
+
+<ResponseField name="user" type="object">
+  The Resume Insight account record linked to the Google identity. For first-time sign-ins, a new account is automatically created.
+</ResponseField>
+
+---
+
+## GET /auth/verify_token
+
+Verifies that a JWT token is valid and has not expired, and returns the decoded token payload including the user's ID, email, and role. Use this endpoint to confirm authentication state on the client side without making a full profile request.
+
+### Request Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token in the format `Bearer <token>`.
+</ParamField>
+
+<Tabs>
+  <Tab title="Request">
+    ```http
+    GET /auth/verify_token HTTP/1.1
+    Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+    ```
+  </Tab>
+  <Tab title="Response — 200 OK">
+    ```json
+    {
+      "status": "success",
+      "message": "Token is valid ✅",
+      "data": {
+        "sub": "6651a2f3c4e8d10012a4b3c1",
+        "email": "student@bitsathy.ac.in",
+        "role": "user",
+        "exp": 1716892800
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="Response — 401 Unauthorized">
+    ```json
+    {
+      "detail": "Token verification failed ❌"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Response Fields
+
+<ResponseField name="status" type="string">
+  `"success"` when the token is valid and unexpired.
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  The decoded JWT payload.
+
+  <Expandable title="data fields">
+    <ResponseField name="sub" type="string">
+      The user's unique ID (MongoDB document ID as a string).
+    </ResponseField>
+    <ResponseField name="email" type="string">
+      The email address encoded in the token.
+    </ResponseField>
+    <ResponseField name="role" type="string">
+      The user's role: `user`, `trainer`, or `admin`.
+    </ResponseField>
+    <ResponseField name="exp" type="integer">
+      Unix timestamp indicating when the token expires.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+---
+
+## POST /auth/set_password
+
+Sets or updates a user's password. If the email address already exists in the system, the password (and optionally the role) is updated. If the email does not exist, a new account is created. All passwords are stored using bcrypt hashing. This endpoint performs an upsert — it never returns a 404.
+
+### Request Body
+
+<ParamField body="email" type="string" required>
+  The email address of the account to update or create.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  The new password to set. Stored using bcrypt hashing.
+</ParamField>
+
+<ParamField body="role" type="string">
+  Optional role to assign or update. Accepted values: `user`, `trainer`, `admin`. If omitted, an existing account's role is unchanged; a newly created account receives the `user` role.
+</ParamField>
+
+<Tabs>
+  <Tab title="Request — Update existing user">
+    ```json
+    {
+      "email": "student@bitsathy.ac.in",
+      "password": "NewSecurePass2"
+    }
+    ```
+  </Tab>
+  <Tab title="Response — Password updated">
+    ```json
+    {
+      "status": "success",
+      "message": "Password updated ✅",
+      "role": "user",
+      "user": {
+        "_id": "6651a2f3c4e8d10012a4b3c1",
+        "email": "student@bitsathy.ac.in",
+        "role": "user"
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="Response — New user created">
+    ```json
+    {
+      "status": "success",
+      "message": "User created ✅",
+      "role": "trainer",
+      "user": {
+        "_id": "6651c9d7c4e8d10012a4b4aa",
+        "email": "trainer@bitsathy.ac.in",
+        "role": "trainer"
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+<Tip>
+  Use this endpoint to onboard trainer or admin accounts that are set up by an administrator rather than self-registered. Pass the `role` field to assign the correct permissions at creation time.
+</Tip>
+
+---
+
+## POST /auth/logout
+
+Signals a logout event and returns a success confirmation. Because Resume Insight uses stateless JWT tokens, there is no server-side session to invalidate. The actual logout is completed by your client — discard the stored `access_token` from local storage, cookies, or wherever you hold it so that it is no longer sent with future requests.
+
+<Tabs>
+  <Tab title="Request">
+    ```http
+    POST /auth/logout HTTP/1.1
+    ```
+  </Tab>
+  <Tab title="Response — 200 OK">
+    ```json
+    {
+      "status": "success",
+      "message": "Logged out successfully ✅"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+  JWT tokens are stateless — calling this endpoint does not invalidate the token server-side. After receiving the success response, make sure your client removes the stored token immediately. Any request that still includes the old token in the `Authorization` header will be treated as authenticated until the token's `exp` claim is reached.
+</Note>

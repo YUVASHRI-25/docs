@@ -1,0 +1,74 @@
+---
+title: "Resume Insight: AI-Driven Resume Analysis Platform"
+sidebarTitle: "Introduction"
+description: "Resume Insight uses AI to score resumes, close skill gaps, and deliver career roadmaps for job seekers, placement trainers, and HR teams."
+---
+
+Resume Insight is an AI-powered career platform that transforms the way job seekers, placement trainers, and HR professionals interact with resumes. Upload a resume and the platform instantly parses it, scores it against Applicant Tracking System (ATS) criteria, predicts the most fitting job role, and surfaces the skills you need to close the gap — all in a single API call. Whether you are a student preparing for campus placements, a trainer evaluating a cohort of candidates, or an HR administrator shortlisting applicants at scale, Resume Insight gives you structured, actionable intelligence so you can make faster and more confident decisions.
+
+## Explore by Role
+
+<CardGroup cols={3}>
+  <Card
+    title="Job Seeker"
+    icon="user"
+    href="/roles/job-seeker"
+  >
+    Upload your resume, get your ATS score, discover skill gaps, and receive a personalized AI career roadmap.
+  </Card>
+  <Card
+    title="Placement Trainer"
+    icon="chalkboard-teacher"
+    href="/roles/trainer"
+  >
+    Filter and rank student resumes in bulk by CGPA, skills, department, and ATS score using real-time streaming results.
+  </Card>
+  <Card
+    title="HR Admin"
+    icon="building"
+    href="/roles/admin"
+  >
+    Analyze individual candidates, run AI-powered top-N ranking, and shortlist applicants with structured scoring.
+  </Card>
+</CardGroup>
+
+## What You Can Do
+
+<CardGroup cols={2}>
+  <Card title="ATS Scoring" icon="chart-bar">
+    Every uploaded resume receives a numeric ATS score alongside a detailed breakdown showing exactly which criteria raised or lowered the score — so you know precisely what to fix.
+  </Card>
+  <Card title="Resume Parsing" icon="file-lines">
+    The platform extracts structured data from your resume — name, contact details, education, technical skills, projects, and work experience — and stores it for downstream analysis.
+  </Card>
+  <Card title="Coding Profile Analysis" icon="code">
+    Connect your LeetCode, CodeChef, and GitHub profiles for a holistic view of your technical ability. Problem-solving stats, repository counts, and PR metrics are all factored in.
+  </Card>
+  <Card title="AI Role Prediction" icon="wand-magic-sparkles">
+    An LLM analyses your skills, education, and experience to predict your best-fit job role — such as Data Analyst, Backend Engineer, or DevOps Specialist — and explains the reasoning.
+  </Card>
+  <Card title="Career Guidance" icon="map">
+    Receive a step-by-step career roadmap powered by GROQ LLaMA 4, including targeted learning suggestions, project ideas, and the exact skills to acquire for your target role.
+  </Card>
+  <Card title="Bulk Resume Filtering" icon="filter">
+    Trainers can upload dozens of resumes at once and filter candidates by CGPA range, required skills, degree, department, language, and minimum ATS score simultaneously.
+  </Card>
+</CardGroup>
+
+## How It Works
+
+<Steps>
+  <Step title="Create an account and log in">
+    Register with your email and choose a role — `user`, `trainer`, or `admin`. Log in to receive a JWT Bearer token that authenticates every subsequent request you make to the API.
+  </Step>
+  <Step title="Upload your resume (or a batch of resumes)">
+    Send your PDF or DOCX file to the upload endpoint. The platform parses the document, runs ATS scoring, predicts your job role, and identifies skill gaps — all in one call. Trainers can upload multiple files simultaneously for batch analysis.
+  </Step>
+  <Step title="Act on your results">
+    Review your structured resume data, ATS score breakdown, detected role, and suggested skills. Then call the guidance endpoint to generate a personalized career roadmap, or integrate the results into your own dashboard or workflow.
+  </Step>
+</Steps>
+
+<Note>
+  Resume Insight supports **PDF** and **DOCX** file formats for resume uploads. Make sure your file is not password-protected and is under the platform's size limit before uploading.
+</Note>

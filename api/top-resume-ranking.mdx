@@ -1,0 +1,203 @@
+---
+title: "Top-N Resume Ranking API: AI-Powered Candidate Shortlisting"
+sidebarTitle: "Top-N Ranking"
+description: "Upload resumes for AI-powered extraction, then score and rank candidates to get a top-N shortlist. Powered by GROQ LLaMA 4 and OpenRouter reranking."
+---
+
+The Top-N Resume Ranking workflow gives trainers a two-step AI shortlisting pipeline. First, you upload resume files and Resume Insight uses GROQ LLaMA 4 to extract a rich structured profile from each document — skills, projects, internships, certifications, academics, and contact details. Second, you request a ranked shortlist: the system scores every stored profile against a weighted rubric, then sends the top candidates through OpenRouter for an AI-assisted reranking pass that accounts for skill relevance and overall profile quality.
+
+<Note>
+  Both endpoints require an `Authorization: Bearer <token>` header. The authenticated account must have `role == "trainer"`. Requests from other roles receive `403 Forbidden`.
+</Note>
+
+---
+
+## POST /admin/top\_resume\_filter/upload
+
+Upload resume files to extract and store structured candidate profiles. You can upload files in multiple batches across separate requests — all profiles are linked to your trainer account and remain available for ranking until you run `POST /admin/top_resume_filter/top_n`.
+
+**Content-Type:** `multipart/form-data`
+
+### Parameters
+
+<ParamField body="files" type="file[]" required>
+  One or more resume files. Accepted formats: **PDF**, **DOCX**, **DOC**. Each file is processed individually by the AI extraction model.
+</ParamField>
+
+### Duplicate Detection
+
+Resume Insight computes a **SHA-256 hash** of each uploaded file's raw content before extraction. If you upload the same file twice — even with a different filename — it is detected as a duplicate and skipped without re-processing. The response tells you exactly which files were skipped.
+
+### AI Extraction
+
+For each new file, the GROQ LLaMA 4 model extracts:
+
+<CardGroup cols={2}>
+  <Card title="Identity" icon="user">
+    Full name, email address, and contact number.
+  </Card>
+  <Card title="Skills" icon="code">
+    A flat list of all technical and soft skills mentioned anywhere in the resume.
+  </Card>
+  <Card title="Experience" icon="briefcase">
+    Internships and work experience entries as a list of descriptive strings.
+  </Card>
+  <Card title="Projects" icon="folder">
+    Project titles and descriptions, up to the full project section.
+  </Card>
+  <Card title="Certifications" icon="certificate">
+    Certification names and issuing bodies.
+  </Card>
+  <Card title="Academics" icon="graduation-cap">
+    CGPA, degree, 10th percentage, and 12th percentage.
+  </Card>
+</CardGroup>
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:8000/admin/top_resume_filter/upload \
+  -H "Authorization: Bearer <your_token>" \
+  -F "files=@alice_resume.pdf" \
+  -F "files=@bob_resume.docx" \
+  -F "files=@carol_resume.pdf"
+```
+
+### Example Response
+
+```json
+{
+  "status": "success",
+  "processed_count": 2,
+  "results": [
+    {
+      "filename": "alice_resume.pdf",
+      "status": "completed",
+      "name": "Alice Ramesh",
+      "email": "alice@example.com"
+    },
+    {
+      "filename": "bob_resume.docx",
+      "status": "completed",
+      "name": "Bob Krishnan",
+      "email": "bob@example.com"
+    },
+    {
+      "filename": "carol_resume.pdf",
+      "status": "failed",
+      "error": "No readable text found"
+    }
+  ]
+}
+```
+
+<Tip>
+  Scanned PDFs without embedded text layers return `"No readable text found"`. Ask candidates to submit text-based PDFs or DOCX files for best results.
+</Tip>
+
+---
+
+## POST /admin/top\_resume\_filter/top\_n
+
+Score and rank the candidate profiles you previously uploaded, then return the top-N results. The endpoint first applies a deterministic weighted scoring algorithm to every profile, then sends the ranked candidates through OpenRouter's GPT model for an AI-powered reranking pass that refines the order based on skill relevance and contextual quality signals.
+
+**Content-Type:** `application/json`
+
+### Parameters
+
+<ParamField body="top_n" type="integer" default="5">
+  Number of top candidates to return. Minimum `1`, maximum `50`. You can also specify this inside a natural language `command` (e.g., `"give me top 10 candidates"`).
+</ParamField>
+
+<ParamField body="command" type="string">
+  Optional natural language instruction to guide the ranking (e.g., `"Prioritise candidates with React and Node.js experience"` or `"Top 8 candidates with strong academic records"`). The model reads this instruction during the AI reranking step.
+</ParamField>
+
+<ParamField body="use_openrouter" type="boolean" default="true">
+  Whether to enable the AI reranking pass. This must be `true` for the endpoint to succeed — OpenRouter is mandatory for this feature.
+</ParamField>
+
+<ParamField body="filenames" type="string[]">
+  Optional list of specific filenames to score. When provided, only profiles uploaded with those filenames are included. When omitted, all profiles uploaded by your trainer account are scored.
+</ParamField>
+
+---
+
+### Scoring Algorithm
+
+Each profile receives a base score out of **100 points** before the AI reranking pass:
+
+<CardGroup cols={2}>
+  <Card title="Skills — 35 pts" icon="star">
+    3.5 points per skill listed, capped at 35. Rewards candidates who bring broad technical depth.
+  </Card>
+  <Card title="Experience — 20 pts" icon="briefcase">
+    8 points per internship or work entry, capped at 20. Two solid internships earns a perfect score here.
+  </Card>
+  <Card title="Projects — 15 pts" icon="folder-open">
+    4 points per project listed, capped at 15. Encourages hands-on work beyond coursework.
+  </Card>
+  <Card title="Certifications — 10 pts" icon="certificate">
+    3 points per certification, capped at 10. Recognises industry-recognised credentials.
+  </Card>
+  <Card title="CGPA — 12 pts" icon="graduation-cap">
+    Proportional: `(CGPA / 10) × 12`. A CGPA of 9.5 earns 11.4 pts.
+  </Card>
+  <Card title="Academics — 8 pts" icon="school">
+    5 pts from 12th marks `(percentage / 100 × 5)` and 3 pts from 10th marks `(percentage / 100 × 3)`.
+  </Card>
+</CardGroup>
+
+After base scoring, OpenRouter GPT reviews the top candidates holistically and may adjust scores and order based on skill relevance, project quality, and the natural language `command` you provided.
+
+<Warning>
+  OpenRouter must be configured and `use_openrouter` must be `true`. If OpenRouter is unavailable or its API key is not set, this endpoint returns `500 Internal Server Error`. The AI reranking step is not optional.
+</Warning>
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:8000/admin/top_resume_filter/top_n \
+  -H "Authorization: Bearer <your_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "top_n": 3,
+    "command": "Prioritise candidates with Python and machine learning experience",
+    "use_openrouter": true
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "status": "success",
+  "count": 3,
+  "results": [
+    {
+      "rank": 1,
+      "candidate_name": "Alice Ramesh",
+      "email": "alice@example.com",
+      "key_skills": ["Python", "TensorFlow", "Scikit-Learn", "SQL", "Pandas", "Machine Learning", "Docker", "FastAPI"],
+      "score": 84.5,
+      "summary": "Strong Python and ML skill set with 2 internships, 4 projects, and 3 certifications. CGPA 8.6. AI reranked for ML-focus instruction."
+    },
+    {
+      "rank": 2,
+      "candidate_name": "Bob Krishnan",
+      "email": "bob@example.com",
+      "key_skills": ["Python", "Machine Learning", "NumPy", "Flask", "PostgreSQL", "Git"],
+      "score": 72.0,
+      "summary": "Solid Python and ML foundation with 1 internship and 3 projects. CGPA 7.9."
+    },
+    {
+      "rank": 3,
+      "candidate_name": "Carol Nair",
+      "email": "carol@example.com",
+      "key_skills": ["Python", "Data Visualization", "R", "Tableau", "Excel"],
+      "score": 61.2,
+      "summary": "Data-focused profile with good academic record. Projects in data analysis. CGPA 8.1."
+    }
+  ]
+}
+```

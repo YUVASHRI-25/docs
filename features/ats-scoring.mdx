@@ -1,0 +1,112 @@
+---
+title: "ATS Score: Measure Your Resume's Hiring System Compatibility"
+sidebarTitle: "ATS Scoring"
+description: "Learn how Resume Insight calculates your ATS compatibility score and the practical steps to improve your resume's chances of passing automated filters."
+---
+
+Most companies today use Applicant Tracking Systems (ATS) to automatically screen resumes before a human recruiter ever sees them. These systems scan for specific keywords, check formatting, and measure how well your resume matches a job role. If your resume fails the ATS filter, it never reaches a hiring manager — no matter how qualified you are. Resume Insight calculates a 0–100 ATS compatibility score every time you upload a resume, so you know exactly how likely your resume is to make it through, and what to fix if it doesn't.
+
+## How the Score Works
+
+Your ATS score is a number between **0 and 100**, computed by analyzing the full text of your uploaded resume across several weighted categories. A higher score means your resume is better structured, richer in relevant keywords, and more likely to be surfaced by hiring software.
+
+The score is returned as both a single number (`ats_score`) and a detailed per-category breakdown (`ats_breakdown`) so you can see exactly where you are strong and where you need to improve.
+
+## Score Breakdown
+
+The following categories contribute to your total ATS score. Each category has a maximum point value, and the final score is capped at 100.
+
+<Accordion title="Section Coverage — up to 20 points">
+  Your resume must include four core sections for maximum points: **Experience** (internships or work history), **Education**, **Skills**, and **Projects**. Each present section contributes 5 points. A resume missing any of these sections is penalized significantly.
+</Accordion>
+
+<Accordion title="Contact Information — up to 10 points">
+  ATS systems verify that recruiters can reach you. Your resume earns points for including a valid email address (5 points) and at least one professional profile link such as LinkedIn or GitHub (5 points).
+</Accordion>
+
+<Accordion title="Word Count — up to 5 points">
+  Resumes that are too short lack content for ATS parsing; those that are too long can be truncated by some systems. A word count between **500 and 1,200 words** earns full marks. Resumes between 300 and 499 words earn partial credit; anything below 300 scores zero here.
+</Accordion>
+
+<Accordion title="Bullet Points — up to 10 points">
+  ATS systems and human recruiters alike favor bulleted lists for experience and project descriptions. Having **10 or more bullet points** earns full marks; 4–9 earns half credit; fewer than 4 earns nothing. Use bullet points consistently throughout your Experience and Projects sections.
+</Accordion>
+
+<Accordion title="Action Verbs and Measurable Achievements — up to 20 points">
+  Resumes that describe impact rather than responsibilities score higher. Every strong action verb (e.g., *developed*, *implemented*, *optimized*, *automated*) earns 1 point. Every quantified result (e.g., *reduced load time by 40%*, *served 1,000 users*, *cut costs by $2,000*) earns 2 points, up to a maximum of 20 combined.
+</Accordion>
+
+<Accordion title="Skills Strength — up to 30 points">
+  This is the highest-weighted category. Every recognized technical skill keyword (languages, frameworks, databases, cloud platforms) earns 1.5 points; every recognized tool keyword (Git, Figma, Jira, Docker, Tableau, etc.) earns 1 point, up to a maximum of 30 combined. The broader and more relevant your skills list, the higher your score here.
+</Accordion>
+
+<Accordion title="Soft Skills and Certifications — up to 5 points">
+  Soft skills like leadership, communication, and teamwork contribute up to 2 points. Recognized certification keywords — AWS, Azure, GCP, Oracle, PMP, Scrum, Cisco, and others — contribute up to 3 points.
+</Accordion>
+
+<Accordion title="Formatting Penalty — up to −5 points">
+  Points are deducted for formatting choices that confuse ATS parsers: embedded images (`.png`, `.jpg`, `.svg`) or unusually long lines of text (over 150 characters) each add to the penalty. Keep your layout clean and text-based to avoid losing points here.
+</Accordion>
+
+## Reading Your Score
+
+Use the ranges below to understand where your resume stands and what level of effort is needed to improve it.
+
+| Score Range | Rating | What It Means |
+|-------------|--------|---------------|
+| **80 – 100** | Excellent ✅ | Your resume is well-optimized and likely to pass most ATS filters. Focus on tailoring keywords to specific job descriptions. |
+| **60 – 79** | Good 🟡 | Minor improvements needed. Add quantified achievements, strengthen your skills section, and verify all core sections are present. |
+| **40 – 59** | Fair 🟠 | Significant gaps exist. You likely need to expand your content, add bullet points, and include more industry-relevant keywords. |
+| **0 – 39** | Poor 🔴 | Major revision needed. Your resume may be too short, missing core sections, or formatted in a way that prevents ATS parsing entirely. |
+
+## Improving Your Score
+
+These practical changes have the biggest impact on your ATS score:
+
+- **Use standard section headings.** Write "Education", "Skills", "Projects", "Experience", and "Certifications" exactly — avoid creative alternatives like "What I Know" or "My Journey", which ATS systems may not recognize.
+- **List skills as individual keywords.** Write `Python, FastAPI, MongoDB, Docker` rather than "I have experience with various backend technologies." Keyword density matters.
+- **Spell out certifications fully.** Write "AWS Certified Cloud Practitioner" rather than just "AWS cert". Full names match ATS keyword databases reliably.
+- **Add quantified results.** Replace "worked on an e-commerce project" with "built an e-commerce platform serving 500+ users, reducing checkout time by 30%." Numbers stand out to both ATS and humans.
+- **Use bullet points throughout.** Convert paragraph-style descriptions in your experience and project sections into clean, action-verb-led bullet points.
+- **Remove images and complex tables.** Any design element that is not plain text is invisible to ATS parsers. Keep the layout simple.
+
+## Accessing Your ATS Score
+
+You can view your ATS score in the Resume Insight dashboard after uploading your resume, or retrieve it programmatically via the history endpoint.
+
+**Endpoint:** `GET /user/history/{email}`
+
+```bash
+curl http://localhost:8000/user/history/priya.ramesh@email.com \
+  -H "Authorization: Bearer <your_token>"
+```
+
+**Example response (score fields):**
+
+```json
+{
+  "status": "success",
+  "ats_score": 74,
+  "ats_breakdown": {
+    "Section Coverage": 20,
+    "Contact Info": 10,
+    "Word Count": 5,
+    "Bullet Points": 10,
+    "Action + Achievements": 12,
+    "Skills Strength": 15,
+    "Soft Skills & Certs": 4,
+    "Formatting Penalty": -2,
+    "Total ATS Score": 74
+  },
+  "word_count": 612,
+  "detected_role": "Backend Developer - Fresher",
+  "suggested_skills": ["Docker", "Redis", "PostgreSQL", "Kubernetes", "AWS"],
+  "last_uploaded": "2025-01-15T10:42:00.000000"
+}
+```
+
+Each key in `ats_breakdown` corresponds directly to a scoring category. Identify your lowest-scoring categories and apply the improvement tips above before re-uploading.
+
+<Tip>
+  After making improvements to your resume, re-upload it via **POST /user/upload_resume** or from the dashboard. Your new score will replace the previous one immediately, and your `last_uploaded` timestamp will update so you can track your progress over time.
+</Tip>

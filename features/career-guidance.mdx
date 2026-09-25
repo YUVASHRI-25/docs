@@ -1,0 +1,250 @@
+---
+title: "Career Guidance: Personalized Roadmaps and AI Chat"
+sidebarTitle: "Career Guidance"
+description: "Generate an AI career guidance report, a personalized role roadmap, and use the AI chat assistant that answers your questions using your resume as context."
+---
+
+Resume Insight provides two complementary AI-powered career guidance tools that work together to help you chart a clear path forward. The **Career Guidance Report** gives you a structured, comprehensive analysis of your strengths, skill gaps, learning paths, and project recommendations — all derived from your actual resume data. The **AI Chat Assistant** lets you ask follow-up questions and get personalized answers in real time, with your resume always in context. Together they replace the need for a career advisor for most early-stage job seekers.
+
+## Career Guidance Report
+
+The guidance report is a deep analysis of your resume that returns a rich structured document covering ten areas: your current technical skills with estimated proficiency levels, missing skills, learning path recommendations, project ideas, certificate guidance, role matching with gap analysis, weak skills to drop, recommended tech stacks, a career clarity summary, and a week-by-week improvement schedule.
+
+**Endpoint:** `POST /guidance/generate`
+
+Pass the `structured_info` object you received from your resume upload as the `resume_data` field. This is the parsed resume data — not the raw file.
+
+**Example request:**
+
+```bash
+curl -X POST http://localhost:8000/guidance/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resume_data": {
+      "name": "Priya Ramesh",
+      "skills": {
+        "technical": ["Python", "React", "FastAPI", "MongoDB", "Git"],
+        "soft": ["Communication", "Teamwork"],
+        "area_of_interest": ["Web Development", "Machine Learning"]
+      },
+      "education": {
+        "bachelor": {
+          "degree": "B.E. Computer Science",
+          "institute": "Anna University",
+          "cgpa": "8.6"
+        }
+      },
+      "projects": [
+        {
+          "title": "AI Resume Analyzer",
+          "description": "Full-stack app for resume parsing and ATS scoring",
+          "technologies": ["Python", "React", "MongoDB"]
+        }
+      ],
+      "certificates": ["AWS Cloud Practitioner"],
+      "internships": []
+    }
+  }'
+```
+
+**Example response:**
+
+```json
+{
+  "guidance": {
+    "technical_skills": [
+      { "name": "Python", "level": "intermediate" },
+      { "name": "React", "level": "intermediate" },
+      { "name": "FastAPI", "level": "beginner" },
+      { "name": "MongoDB", "level": "beginner" }
+    ],
+    "missing_skills": [
+      { "name": "Docker", "reason": "Containerization is expected in most backend and full-stack roles." },
+      { "name": "SQL", "reason": "Relational databases are required alongside MongoDB for most production systems." }
+    ],
+    "learning_paths": [
+      {
+        "track": "Web Development",
+        "topics": ["Modern JavaScript (ES6+)", "React advanced patterns", "REST API design", "Node.js basics"],
+        "tools": ["VS Code", "Git & GitHub", "Postman"],
+        "projects": ["Task manager with login", "E-commerce product page"],
+        "estimated_time_weeks": 6
+      }
+    ],
+    "project_ideas": [
+      { "title": "Portfolio Website", "type": "mini", "description": "Showcase your projects and skills" },
+      { "title": "Full-Stack Blog Platform", "type": "portfolio", "description": "End-to-end blog with auth and CRUD" }
+    ],
+    "certificate_recommendations": [
+      { "name": "AWS Cloud Practitioner", "value_level": "high", "recommendation": "pursue", "reason": "Validates cloud fundamentals for backend roles." },
+      { "name": "Generic MS Office course", "value_level": "low", "recommendation": "avoid", "reason": "Too basic for IT hiring; focus on technical certifications." }
+    ],
+    "role_matching": [
+      {
+        "role": "Full Stack Developer",
+        "match_percentage": 78,
+        "matched_skills": ["Python", "React", "FastAPI", "MongoDB", "Git"],
+        "missing_skills": ["Docker", "TypeScript"],
+        "additional_skills_to_learn": ["Linux basics", "CI/CD basics"]
+      }
+    ],
+    "career_clarity_summary": {
+      "primary_alignment": "Web Development",
+      "aligned_roles": ["Full Stack Developer", "Backend Developer"],
+      "roles_to_avoid": ["Embedded / Firmware roles"],
+      "reasoning": "Your skills in React and FastAPI align strongly with full-stack web development."
+    },
+    "weekly_schedule": [
+      {
+        "week": 1,
+        "focus": "Deepen React knowledge and REST API integration",
+        "topics": ["React hooks", "React Router", "Axios / Fetch API"],
+        "practice_tasks": ["Build a weather app consuming a public API"],
+        "checkpoints": ["Can build and deploy a React app independently"]
+      }
+    ]
+  }
+}
+```
+
+## Role Roadmap
+
+If you have a specific job title in mind, the role roadmap endpoint generates a step-by-step learning plan comparing your current skills against what the role requires, with phased milestones and project recommendations.
+
+**Endpoint:** `POST /guidance/role-roadmap`
+
+<ParamField body="target_role" type="string" required>
+  The job title you want to work toward. Examples: `"Backend Developer"`, `"Data Scientist"`, `"DevOps Engineer"`, `"ML Engineer"`.
+</ParamField>
+
+<ParamField body="current_skills" type="array of strings" required>
+  Your current technical skills as a list of plain strings. Pull these from your resume's `structured_info.skills.technical` array.
+</ParamField>
+
+<ParamField body="experience_level" type="string" default="fresher">
+  Your current experience level. Accepted values: `"fresher"`, `"junior"`, `"mid"`. Defaults to `"fresher"` if not provided.
+</ParamField>
+
+**Example request:**
+
+```bash
+curl -X POST http://localhost:8000/guidance/role-roadmap \
+  -H "Content-Type: application/json" \
+  -d '{
+    "target_role": "Backend Developer",
+    "current_skills": ["Python", "FastAPI", "MongoDB", "Git", "HTML", "CSS"],
+    "experience_level": "fresher"
+  }'
+```
+
+**Example response:**
+
+```json
+{
+  "roadmap": {
+    "target_role": "Backend Developer",
+    "match_percentage": 65,
+    "skills_you_have": [
+      { "name": "Python", "status": "have", "relevance": "high" },
+      { "name": "Git", "status": "have", "relevance": "high" }
+    ],
+    "skills_to_learn": [
+      { "name": "SQL", "priority": "high", "reason": "Core requirement for Backend Developer", "learning_time": "2 weeks" },
+      { "name": "Docker", "priority": "high", "reason": "Core requirement for Backend Developer", "learning_time": "2 weeks" },
+      { "name": "Redis", "priority": "medium", "reason": "Will make you stand out for Backend Developer", "learning_time": "1 week" }
+    ],
+    "roadmap_phases": [
+      {
+        "phase": 1,
+        "title": "Foundation Phase",
+        "duration": "4-6 weeks",
+        "focus": "SQL, Linux basics, and authentication patterns",
+        "skills": ["SQL", "Linux basics", "JWT Authentication"],
+        "action_items": [
+          "Complete a SQL fundamentals course",
+          "Build a CRUD API with PostgreSQL"
+        ],
+        "milestone": "Deploy a fully authenticated REST API",
+        "resources": ["PostgreSQL documentation", "SQLZoo", "FastAPI official docs"]
+      }
+    ],
+    "projects": [
+      { "title": "REST API Service", "description": "CRUD API with auth and PostgreSQL", "difficulty": "beginner", "skills_used": ["Python", "FastAPI", "SQL"], "duration": "2 weeks" }
+    ],
+    "estimated_timeline": "12-16 weeks",
+    "tips": [
+      "Build every project with a proper README and push to GitHub",
+      "Contribute to one open source Python or FastAPI project",
+      "Practice SQL queries on LeetCode's database problems"
+    ]
+  }
+}
+```
+
+## AI Chat Assistant
+
+The AI Chat Assistant lets you ask any career question — and get an answer that takes your specific background into account. You can ask for skill gap assessments, interview tips, resume improvement suggestions, or career pivot advice. Attaching your resume data ensures the AI's answers are personalized to your actual situation, not generic advice.
+
+**Endpoint:** `POST /ai/chat`
+
+<ParamField body="query" type="string" required>
+  Your question or request in plain English. Be as specific as possible for the most useful answer.
+</ParamField>
+
+<ParamField body="resume_data" type="object">
+  Your resume's `structured_info` object from your last upload. Optional, but strongly recommended — without it, the AI cannot personalize its response to your background.
+</ParamField>
+
+**Example request:**
+
+```bash
+curl -X POST http://localhost:8000/ai/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "What skills should I add to my resume to get a backend developer role?",
+    "resume_data": {
+      "skills": {
+        "technical": ["Python", "FastAPI", "MongoDB", "Git", "React"],
+        "area_of_interest": ["Web Development"]
+      },
+      "projects": [
+        { "title": "AI Resume Analyzer", "technologies": ["Python", "React", "MongoDB"] }
+      ],
+      "certificates": ["AWS Cloud Practitioner"]
+    }
+  }'
+```
+
+**Example response:**
+
+```json
+{
+  "response": "Based on your current skills in Python, FastAPI, and MongoDB, you have a solid foundation for backend development. To strengthen your profile for backend developer roles, I recommend adding: 1) SQL / PostgreSQL — relational databases are expected alongside MongoDB in most production environments. 2) Docker — containerization is now standard in backend workflows and is a frequent interview topic. 3) Redis — caching knowledge is highly valued for APIs at scale. 4) Linux command-line basics — backend services run on Linux and interviewers often test this. 5) CI/CD fundamentals — setting up a basic GitHub Actions pipeline on one of your projects would demonstrate production awareness. Your AWS cert is a good differentiator — consider emphasizing it in your skills section."
+}
+```
+
+## Caching Guidance
+
+Career guidance results are cached per user account so you do not need to re-generate them on every visit to your dashboard. You can save a guidance result and retrieve it later using the following endpoints.
+
+**Save guidance to your account:**
+
+```bash
+curl -X POST http://localhost:8000/user/guidance/priya.ramesh@email.com \
+  -H "Authorization: Bearer <your_token>" \
+  -H "Content-Type: application/json" \
+  -d '{ "guidance": { "..." } }'
+```
+
+**Retrieve cached guidance:**
+
+```bash
+curl http://localhost:8000/user/guidance/priya.ramesh@email.com \
+  -H "Authorization: Bearer <your_token>"
+```
+
+The `GET` endpoint returns `{ "guidance": { ... } }` with your last saved guidance object. If no guidance has been saved yet, the `guidance` field will be an empty object. Use the dashboard's **Generate Guidance** button to create and auto-save new guidance whenever you re-upload a resume with new skills.
+
+<Tip>
+  The AI Chat Assistant works best when you pass your full `resume_data` from your most recent upload. You can copy the `structured_info` value from the `POST /user/upload_resume` response and include it in every chat request for consistently personalized answers.
+</Tip>

@@ -1,47 +1,199 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Get Started with Resume Insight in Under Five Minutes"
+sidebarTitle: "Quickstart"
+description: "Follow these five steps to register, authenticate, upload your first resume, and start receiving AI-powered career guidance from Resume Insight."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
+This guide walks you through everything you need to go from zero to your first AI-powered resume analysis. By the end you will have a JWT access token, an uploaded resume with an ATS score, a detected job role, and a personalized career roadmap — all using the Resume Insight API. Every step below includes real request examples you can run immediately.
 
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
-
-## Prerequisites
-
-Before you begin, you must have:
-
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
-
-## Get started
+<Note>
+  The API base URL for all examples in this guide is `http://localhost:8000`. Replace this with your deployed instance URL when moving to production.
+</Note>
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+  <Step title="Sign Up / Log In">
+    Start by creating an account. Send a `POST` request to `/auth/register` with your email address, a password, and the role you want to register as.
 
-    ```bash
-    npm install your-package
+    **Available roles:**
+    - `user` — Job seeker who uploads and analyzes their own resume
+    - `trainer` — Placement coordinator who filters and ranks student resumes in bulk
+    - `admin` — HR professional who runs candidate shortlisting and top-N ranking
+
+    ```json title="POST /auth/register — Request body"
+    {
+      "email": "alex@example.com",
+      "password": "MyStr0ngP@ss",
+      "role": "user"
+    }
+    ```
+
+    ```json title="Successful registration response"
+    {
+      "status": "success",
+      "message": "User registered ✅",
+      "role": "user",
+      "user": {
+        "_id": "64f3a1b2c9e77d001e2a5678",
+        "email": "alex@example.com",
+        "role": "user"
+      }
+    }
+    ```
+
+    If you have an institutional `@bitsathy.ac.in` email address, you can also sign in with Google instead of creating a password-based account — see the [Authentication](/authentication) page for details.
+  </Step>
+
+  <Step title="Obtain Your Token">
+    Log in with your email and password to receive a JWT access token. You will include this token in every subsequent API request.
+
+    ```bash title="curl — POST /auth/login"
+    curl -X POST http://localhost:8000/auth/login \
+      -H "Content-Type: application/json" \
+      -d '{"email": "alex@example.com", "password": "MyStr0ngP@ss"}'
+    ```
+
+    ```json title="Login response"
+    {
+      "status": "success",
+      "message": "Login successful as user ✅",
+      "role": "user",
+      "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "token_type": "bearer",
+      "user": {
+        "_id": "64f3a1b2c9e77d001e2a5678",
+        "email": "alex@example.com",
+        "role": "user"
+      }
+    }
+    ```
+
+    Copy the `access_token` value — you will use it as a Bearer token in the `Authorization` header for all protected endpoints.
+  </Step>
+
+  <Step title="Upload Your Resume">
+    Send your resume as a multipart form upload to `POST /user/upload_resume`. Include your email address and the resume file (PDF or DOCX).
+
+    ```bash title="curl — POST /user/upload_resume"
+    curl -X POST http://localhost:8000/user/upload_resume \
+      -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+      -F "email=alex@example.com" \
+      -F "file=@/path/to/my_resume.pdf"
+    ```
+
+    ```json title="Sample upload response"
+    {
+      "status": "success",
+      "message": "Resume processed successfully ✅",
+      "ats_score": 78,
+      "ats_breakdown": {
+        "skills_match": 30,
+        "education": 18,
+        "experience": 15,
+        "formatting": 15
+      },
+      "detected_role": "Backend Developer",
+      "suggested_skills": [
+        "Docker",
+        "Kubernetes",
+        "Redis",
+        "GraphQL",
+        "CI/CD",
+        "AWS"
+      ],
+      "word_count": 412,
+      "structured_info": {
+        "name": "Alex Johnson",
+        "email": "alex@example.com",
+        "phone": "+91 9876543210",
+        "skills": {
+          "technical": ["Python", "FastAPI", "MongoDB", "REST APIs"],
+          "programming_languages": ["Python", "JavaScript"]
+        },
+        "education": {
+          "bachelor": {
+            "degree": "B.E. Computer Science",
+            "cgpa": "8.4"
+          }
+        },
+        "projects": [
+          {
+            "title": "Task Manager API",
+            "description": "Built a REST API with FastAPI and MongoDB for task management.",
+            "technologies": ["Python", "FastAPI", "MongoDB"]
+          }
+        ]
+      }
+    }
     ```
   </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
 
-    ```bash
-    your-cli init
-    ```
+  <Step title="Review Your Analysis">
+    The upload response gives you everything you need to understand your resume's strengths and gaps at a glance:
+
+    <CardGroup cols={2}>
+      <Card title="structured_info" icon="table">
+        Your parsed resume as structured data — name, contact, education, technical skills, programming languages, and projects — ready to use in downstream calls.
+      </Card>
+      <Card title="ats_score" icon="chart-bar">
+        A numeric score (0–100) representing how well your resume aligns with ATS screening systems. Higher is better.
+      </Card>
+      <Card title="ats_breakdown" icon="list-check">
+        A per-category breakdown of your ATS score showing exactly how skills, education, experience, and formatting each contributed to your total.
+      </Card>
+      <Card title="detected_role" icon="wand-magic-sparkles">
+        The AI-predicted job role that best matches your current skills and experience, such as "Data Analyst" or "Frontend Developer".
+      </Card>
+      <Card title="suggested_skills" icon="graduation-cap">
+        A list of 5–8 skills the AI recommends you learn next to make you a stronger match for your detected role.
+      </Card>
+      <Card title="word_count" icon="file-word">
+        The total word count of your resume. ATS systems often penalise resumes that are too short (under 300 words) or overly long (over 700 words).
+      </Card>
+    </CardGroup>
   </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
 
-    ```bash
-    your-cli start
+  <Step title="Get Career Guidance">
+    Use the `structured_info` object returned from the upload step to generate a full, personalised career roadmap. Pass it as `resume_data` in the request body.
+
+    ```bash title="curl — POST /guidance/generate"
+    curl -X POST http://localhost:8000/guidance/generate \
+      -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+      -H "Content-Type: application/json" \
+      -d '{
+        "resume_data": {
+          "name": "Alex Johnson",
+          "skills": {
+            "technical": ["Python", "FastAPI", "MongoDB", "REST APIs"],
+            "programming_languages": ["Python", "JavaScript"]
+          },
+          "education": {
+            "bachelor": {
+              "degree": "B.E. Computer Science",
+              "cgpa": "8.4"
+            }
+          }
+        }
+      }'
+    ```
+
+    ```json title="Sample guidance response"
+    {
+      "guidance": {
+        "strengths": ["Strong backend fundamentals", "Good CGPA"],
+        "improvement_areas": ["Cloud deployment", "Container orchestration"],
+        "recommended_courses": ["Docker & Kubernetes on Udemy", "AWS Solutions Architect"],
+        "next_steps": [
+          "Build a containerised FastAPI project and deploy it on AWS",
+          "Contribute to an open-source Python project on GitHub",
+          "Earn the AWS Cloud Practitioner certification"
+        ],
+        "career_path": "Junior Backend Developer → Backend Developer → Senior Backend Engineer → Solutions Architect"
+      }
+    }
     ```
   </Step>
 </Steps>
 
 <Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
-
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
+  Want resume parsing, ATS scoring, and coding profile analysis all in one call? Use `POST /analyze_all`. Pass your resume file as a multipart upload and include optional query parameters — `?github=your_username&leetcode=your_handle&codechef=your_handle` — to combine resume and coding profile results in a single response.
 </Tip>

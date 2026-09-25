@@ -1,0 +1,282 @@
+---
+title: "Filter Student Resumes by Skills, CGPA, and Degree"
+sidebarTitle: "Resume Filtering"
+description: "Upload multiple student resumes and filter them in bulk by CGPA, academic scores, required skills, degree, department, and ATS score threshold."
+---
+
+As a placement trainer, you can upload an entire batch of student resumes and instantly narrow the pool down to only the candidates who meet your criteria. Resume Insight parses each file, extracts academic scores, technical skills, and areas of interest, then returns only the resumes that satisfy every filter you specify — saving you hours of manual screening. You can run a standard filter that returns all matched results at once, or use the streaming endpoint to receive live updates as each resume is processed.
+
+## Requirements
+
+All resume-filtering endpoints require a valid JWT token with the `trainer` role. Pass your token in the `Authorization` header on every request.
+
+```http
+Authorization: Bearer <your_trainer_token>
+```
+
+If your token carries a different role (e.g., `user` or `admin`), the server returns `403 Forbidden`. Obtain your token via `POST /auth/login` or `POST /auth/google_signin`.
+
+<Note>
+  Both filtering endpoints require `role == "trainer"` inside your JWT. Tokens issued to `user` or `admin` accounts will be rejected with a 403 error.
+</Note>
+
+---
+
+## Available Filters
+
+All filter parameters are sent as multipart form fields alongside the uploaded files. Every parameter except `files` is optional — omit any parameter and it will not be applied.
+
+<Note>
+  The `skills` filter uses **AND logic** — a resume must contain **all** listed skills to pass. Partial matches are supported (e.g., `"React"` matches `"React.js"`).
+</Note>
+
+<ParamField body="files" type="file[]" required>
+  One or more resume files to evaluate. Accepted formats: PDF, DOCX, DOC. Upload multiple files by repeating the `files` field.
+</ParamField>
+
+<ParamField body="cgpa" type="float">
+  Minimum CGPA (inclusive). Resumes with a CGPA below this value are excluded. Example: `7.5`
+</ParamField>
+
+<ParamField body="cgpa_max" type="float">
+  Maximum CGPA (inclusive). Use together with `cgpa` to define a CGPA band. Example: `9.5`
+</ParamField>
+
+<ParamField body="tenth" type="float">
+  Minimum 10th grade percentage (inclusive). Example: `75.0`
+</ParamField>
+
+<ParamField body="tenth_max" type="float">
+  Maximum 10th grade percentage (inclusive). Example: `95.0`
+</ParamField>
+
+<ParamField body="twelfth" type="float">
+  Minimum 12th grade percentage (inclusive). Example: `70.0`
+</ParamField>
+
+<ParamField body="twelfth_max" type="float">
+  Maximum 12th grade percentage (inclusive). Example: `92.0`
+</ParamField>
+
+<ParamField body="ats" type="float">
+  Minimum ATS (Applicant Tracking System) score. Resumes scoring below this threshold are excluded. Range: `0`–`100`. Example: `60`
+</ParamField>
+
+<ParamField body="skills" type="string">
+  Comma-separated list of required technical skills. A resume must contain **all** listed skills to pass. Example: `"Python,React,SQL"`
+</ParamField>
+
+<ParamField body="language" type="string">
+  Programming language filter. Matches against the candidate's listed languages. Example: `"Java"`
+</ParamField>
+
+<ParamField body="department" type="string">
+  Department or branch filter. Matched against the candidate's degree field. Example: `"Computer Science"`
+</ParamField>
+
+<ParamField body="degree" type="string">
+  Degree type filter. Matched against the candidate's bachelor's degree field. Example: `"B.E."` or `"B.Tech"`
+</ParamField>
+
+<ParamField body="area_of_interest" type="string">
+  Comma-separated areas of interest. At least one area must match for the resume to pass. Example: `"Machine Learning,Data Science"`
+</ParamField>
+
+---
+
+## Standard Filter
+
+**`POST /admin/filter_uploaded_resumes`**
+
+Processes all uploaded resumes and returns the full list of matched candidates in a single JSON response. Best for smaller batches where you want the complete results before proceeding.
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:8000/admin/filter_uploaded_resumes \
+  -H "Authorization: Bearer <your_trainer_token>" \
+  -F "files=@john_doe.pdf" \
+  -F "files=@jane_smith.pdf" \
+  -F "files=@alex_kumar.docx" \
+  -F "cgpa=7.5" \
+  -F "cgpa_max=10.0" \
+  -F "tenth=75.0" \
+  -F "twelfth=70.0" \
+  -F "ats=60" \
+  -F "skills=Python,React" \
+  -F "degree=B.Tech" \
+  -F "department=Computer Science"
+```
+
+### Example Response
+
+```json
+{
+  "count": 2,
+  "results": [
+    {
+      "filename": "john_doe.pdf",
+      "name": "John Doe",
+      "email": "john.doe@example.com",
+      "phone": "+91 98765 43210",
+      "ats_score": 78,
+      "education": {
+        "10th": { "percentage": "88%" },
+        "12th": { "percentage": "82%" },
+        "bachelor": {
+          "degree": "B.Tech Computer Science",
+          "cgpa": "8.4"
+        }
+      },
+      "skills": {
+        "technical": ["Python", "React", "Node.js", "SQL", "Git"],
+        "soft": ["Communication", "Teamwork"],
+        "area_of_interest": ["Web Development", "Machine Learning"]
+      },
+      "languages": ["Python", "JavaScript", "Java"],
+      "area_of_interest": ["Web Development", "Machine Learning"]
+    },
+    {
+      "filename": "jane_smith.pdf",
+      "name": "Jane Smith",
+      "email": "jane.smith@example.com",
+      "phone": "+91 91234 56789",
+      "ats_score": 71,
+      "education": {
+        "10th": { "percentage": "91%" },
+        "12th": { "percentage": "85%" },
+        "bachelor": {
+          "degree": "B.Tech Computer Science",
+          "cgpa": "9.1"
+        }
+      },
+      "skills": {
+        "technical": ["Python", "React", "Flask", "MongoDB"],
+        "soft": ["Leadership", "Problem Solving"],
+        "area_of_interest": ["Full Stack Development"]
+      },
+      "languages": ["Python", "JavaScript"],
+      "area_of_interest": ["Full Stack Development"]
+    }
+  ]
+}
+```
+
+---
+
+## Real-Time Streaming Filter
+
+**`POST /admin/filter_uploaded_resumes_stream`**
+
+Processes resumes one by one and pushes live progress updates over a **Server-Sent Events (SSE)** connection. Each event contains the current progress, the latest matched candidate, and all results accumulated so far. A final `done: true` event signals completion.
+
+**What is SSE?** Server-Sent Events is a standard browser protocol where the server streams a continuous sequence of `data:` messages over a single HTTP connection. Each message is a JSON payload terminated by a double newline (`\n\n`). This makes it ideal for long-running tasks where you want to show progress in real time.
+
+<Note>
+  Set the `Accept: text/event-stream` header on your request so the server streams the response correctly instead of buffering it.
+</Note>
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:8000/admin/filter_uploaded_resumes_stream \
+  -H "Authorization: Bearer <your_trainer_token>" \
+  -H "Accept: text/event-stream" \
+  -F "files=@john_doe.pdf" \
+  -F "files=@jane_smith.pdf" \
+  -F "files=@alex_kumar.docx" \
+  -F "cgpa=7.5" \
+  -F "skills=Python,React" \
+  -F "ats=60"
+```
+
+### Example JavaScript Client
+
+```javascript
+const formData = new FormData();
+formData.append("files", johnDoeFile);
+formData.append("files", janeSmithFile);
+formData.append("cgpa", "7.5");
+formData.append("skills", "Python,React");
+formData.append("ats", "60");
+
+const response = await fetch(
+  "http://localhost:8000/admin/filter_uploaded_resumes_stream",
+  {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer <your_trainer_token>",
+      Accept: "text/event-stream",
+    },
+    body: formData,
+  }
+);
+
+const reader = response.body.getReader();
+const decoder = new TextDecoder();
+
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+
+  const text = decoder.decode(value);
+  const lines = text.split("\n").filter((l) => l.startsWith("data:"));
+
+  for (const line of lines) {
+    const payload = JSON.parse(line.replace("data: ", ""));
+
+    if (payload.done) {
+      console.log("All done!", payload.results);
+    } else {
+      console.log(
+        `Progress: ${payload.progress}/${payload.total} — ${payload.latest_name}`
+      );
+    }
+  }
+}
+```
+
+### Progress Event Format
+
+Each intermediate SSE event reports the current file number, the number of resumes matched so far, and the cumulative results list:
+
+```json
+data: {
+  "progress": 2,
+  "processed": 1,
+  "total": 3,
+  "latest_filename": "jane_smith.pdf",
+  "latest_name": "Jane Smith",
+  "results_so_far": [
+    {
+      "filename": "jane_smith.pdf",
+      "name": "Jane Smith",
+      "email": "jane.smith@example.com",
+      "phone": "+91 91234 56789",
+      "ats_score": 71,
+      "education": { ... },
+      "skills": { ... },
+      "languages": ["Python", "JavaScript"],
+      "area_of_interest": ["Full Stack Development"]
+    }
+  ]
+}
+```
+
+### Final Event Format
+
+After all files are processed, a closing event is sent with `done: true` and the complete results:
+
+```json
+data: {
+  "done": true,
+  "results": [ ... ],
+  "count": 2
+}
+```
+
+---
+
+<Tip>
+  Start with broad filters (e.g., only a minimum CGPA) and progressively narrow them down. Use the streaming endpoint for large batches of 20 or more resumes — you'll see matches appear in real time and can stop early if you already have enough candidates.
+</Tip>

@@ -1,0 +1,155 @@
+---
+title: "POST /ai/chat — Resume-Aware AI Career Assistant"
+sidebarTitle: "AI Chat"
+description: "POST /ai/chat sends a career question alongside your resume data and returns personalized AI advice powered by OpenRouter GPT models."
+---
+
+The AI Chat endpoint is Resume Insight's conversational career advisor. You send a plain-language question — about skill gaps, career paths, interview prep, or anything career-related — and optionally include your structured resume data so the AI can tailor its response to your actual background. The endpoint is powered by OpenRouter's GPT-4o-mini model, keeping responses focused and actionable.
+
+---
+
+## POST /ai/chat
+
+**Authentication:** Not required — this endpoint is open.  
+**Content-Type:** `application/json`
+
+### Request Parameters
+
+<ParamField body="query" type="string" required>
+  Your question or request. Can be a short question (`"What skills should I add?"`) or a more specific prompt (`"I want to become a backend developer. What Python frameworks should I learn first?"`).
+</ParamField>
+
+<ParamField body="resume_data" type="object">
+  Your structured resume data, used to personalise the AI's response. You can pass the `structured_info` object returned by `POST /user/upload_resume` or `GET /user/history/{email}` directly. When omitted, the AI answers without any profile context.
+
+  <Expandable title="resume_data fields">
+    <ParamField body="resume_data.skills" type="object">
+      Your skills block. Include `technical` (array of skill strings) and optionally `soft` (array) to give the AI a clear picture of your current stack.
+    </ParamField>
+    <ParamField body="resume_data.education" type="object or array">
+      Your education details. Include your degree, institution, and CGPA so the AI can contextualise entry-level vs. experienced advice.
+    </ParamField>
+    <ParamField body="resume_data.projects" type="array">
+      Your project list. Helps the AI understand what you have already built and suggest next steps.
+    </ParamField>
+    <ParamField body="resume_data.internships" type="array">
+      Internship or work experience entries. Influences whether the AI gives fresher-oriented or experienced-hire guidance.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:8000/ai/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "What skills should I add to become a backend developer?",
+    "resume_data": {
+      "skills": {
+        "technical": ["Python", "HTML", "CSS"]
+      },
+      "education": [
+        { "degree": "B.E. Computer Science", "cgpa": "8.2" }
+      ]
+    }
+  }'
+```
+
+### Example Request Body
+
+```json
+{
+  "query": "What skills should I add to become a backend developer?",
+  "resume_data": {
+    "skills": {
+      "technical": ["Python", "HTML", "CSS"]
+    },
+    "education": [
+      { "degree": "B.E. Computer Science", "cgpa": "8.2" }
+    ]
+  }
+}
+```
+
+### Response Fields
+
+<ResponseField name="response" type="string">
+  The AI-generated career advice. Responses are plain text, typically 2–5 paragraphs, tailored to the context in your `resume_data` and the specificity of your `query`.
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "response": "Based on your current Python skills and Computer Science background, here are the most impactful backend skills to add:\n\n**Frameworks:** Start with FastAPI or Django REST Framework — both are Python-native and widely used in industry. FastAPI is especially popular for API development and will build on your existing Python knowledge quickly.\n\n**Databases:** Learn SQL fundamentals and practice with PostgreSQL. Add MongoDB for document-based storage experience. Understanding both relational and NoSQL databases makes you versatile.\n\n**Infrastructure basics:** Familiarise yourself with Docker for containerisation and basic Linux command-line usage. These are expected in most backend engineering roles.\n\n**Bonus:** Since you already know HTML and CSS, a small full-stack project using your Python backend and a React or plain HTML frontend will make your portfolio much stronger for applications."
+}
+```
+
+---
+
+## Tips for Better Answers
+
+<CardGroup cols={2}>
+  <Card title="Include your full resume data" icon="file-lines">
+    Pass the complete `structured_info` object from `GET /user/history/{email}`. The more context the AI has — skills, projects, education — the more targeted its advice will be.
+  </Card>
+  <Card title="Ask specific questions" icon="circle-question">
+    Instead of `"Help me improve my resume"`, try `"I want to apply for ML internships at product companies — which of my current skills should I highlight first?"`.
+  </Card>
+  <Card title="Mention your target role" icon="bullseye">
+    Include your goal directly in the `query` — `"I want to become a DevOps engineer"` — so the AI aligns its suggestions with that specific career path.
+  </Card>
+  <Card title="Ask about skill gaps" icon="chart-bar">
+    Combine your skills list with a target role query: `"Given my skills in Python and SQL, what gaps do I need to fill for a data engineering role?"`.
+  </Card>
+</CardGroup>
+
+<Note>
+  Responses are limited to **512 tokens** — roughly 350–400 words. For a detailed multi-stage career roadmap, use the `/guidance/role-roadmap` endpoint instead, which is designed for long-form structured output.
+</Note>
+
+### Example: Asking Without Resume Data
+
+You can also use the endpoint without any resume context for general career questions:
+
+```json
+{
+  "query": "What is the difference between a data analyst and a data scientist?"
+}
+```
+
+The AI will provide a clear, general answer. For personalised gap analysis, always include your `resume_data`.
+
+### Example: Advanced Query with Full Context
+
+```bash
+curl -X POST http://localhost:8000/ai/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "I am applying for data engineering roles at fintech startups. Which of my skills are most relevant and what should I learn next?",
+    "resume_data": {
+      "skills": {
+        "technical": ["Python", "SQL", "Pandas", "Apache Spark", "Airflow"],
+        "soft": ["Problem Solving", "Communication"]
+      },
+      "education": [
+        {
+          "degree": "B.E. Computer Science",
+          "institution": "Anna University",
+          "cgpa": "8.5"
+        }
+      ],
+      "projects": [
+        {
+          "title": "ETL Pipeline for Sales Data",
+          "description": "Built an Airflow-based pipeline ingesting 1M+ rows daily from MySQL to Redshift",
+          "technologies": ["Python", "Airflow", "MySQL", "AWS Redshift"]
+        }
+      ],
+      "internships": [
+        "Data Engineering Intern at Fintech Corp — built Spark jobs for transaction aggregation"
+      ]
+    }
+  }'
+```

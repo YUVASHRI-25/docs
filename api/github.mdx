@@ -1,0 +1,240 @@
+---
+title: "GET /github/analyze_github — Fetch GitHub Activity Metrics"
+sidebarTitle: "GitHub"
+description: "GET /github/analyze_github/{user_input} returns repo counts, PR metrics, and contribution data for a GitHub user. Accepts username or full profile URL."
+---
+
+Resume Insight connects to the GitHub API to pull a complete picture of a developer's open-source activity — covering repository ownership, contribution streaks, and pull request behavior over the past year. Whether you are a job seeker building your profile or a trainer evaluating student engagement, this endpoint gives you the raw numbers behind a developer's GitHub presence in a single call.
+
+## Endpoint
+
+```
+GET http://localhost:8000/github/analyze_github/{user_input}
+```
+
+**Authentication:** Not required for this endpoint.
+
+---
+
+## Path & Query Parameters
+
+<ParamField path="user_input" type="string" required>
+  The GitHub username or full profile URL for the account you want to analyze.
+  Both formats are accepted — Resume Insight automatically extracts the username
+  from a URL.
+
+  **Examples:**
+  - `octocat`
+  - `https://github.com/octocat`
+</ParamField>
+
+<ParamField query="token" type="string">
+  A GitHub personal access token used to authenticate requests to the GitHub
+  GraphQL and REST APIs. If your Resume Insight server is already configured
+  with a server-side token, you can omit this parameter. If no server token is
+  set, you must supply one here.
+
+  **Required scopes:** `read:user`
+</ParamField>
+
+<Note>
+  A GitHub personal access token is required to retrieve data. Either pass it
+  via `?token=YOUR_TOKEN` in the request URL, or ensure a server-side token is
+  already configured. Calls without any token will return a `400` error.
+</Note>
+
+<Tip>
+  Generate a token at [https://github.com/settings/tokens](https://github.com/settings/tokens).
+  Create a **classic token** and select the `read:user` scope. Keep the token
+  safe — treat it like a password and never commit it to source control.
+</Tip>
+
+---
+
+## Request Example
+
+<Tabs>
+  <Tab title="cURL (username)">
+    ```bash
+    curl -X GET \
+      "http://localhost:8000/github/analyze_github/octocat?token=ghp_YourPersonalAccessToken"
+    ```
+  </Tab>
+  <Tab title="cURL (full URL)">
+    ```bash
+    curl -X GET \
+      "http://localhost:8000/github/analyze_github/https%3A%2F%2Fgithub.com%2Foctocat?token=ghp_YourPersonalAccessToken"
+    ```
+  </Tab>
+  <Tab title="Python">
+    ```python
+    import requests
+
+    username = "octocat"
+    token = "ghp_YourPersonalAccessToken"
+
+    response = requests.get(
+        f"http://localhost:8000/github/analyze_github/{username}",
+        params={"token": token}
+    )
+    data = response.json()
+    print(data["github_metrics"])
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Response
+
+A successful `200` response returns a JSON object with two top-level keys.
+
+<ResponseField name="username" type="string">
+  The resolved GitHub username derived from your input.
+</ResponseField>
+
+<ResponseField name="github_metrics" type="object">
+  An object containing all fetched repository, contribution, and pull request
+  metrics for the user.
+
+  <Expandable title="github_metrics fields">
+    <ResponseField name="total_original_repos" type="number">
+      Total number of repositories owned by the user that are **not** forks.
+    </ResponseField>
+
+    <ResponseField name="total_forked_repos" type="number">
+      Total number of repositories that the user forked from other projects.
+    </ResponseField>
+
+    <ResponseField name="total_contributions_1yr" type="number">
+      Total contribution events (commits, issues, PRs, reviews) recorded over
+      the past 365 days in the GitHub contribution calendar.
+    </ResponseField>
+
+    <ResponseField name="active_days_1yr" type="number">
+      Number of distinct calendar days within the past year on which the user
+      made at least one contribution.
+    </ResponseField>
+
+    <ResponseField name="activity_graph" type="array">
+      An ordered array of daily contribution entries for the past year. Each
+      entry is an object with two fields:
+      - `date` (string, `YYYY-MM-DD`) — the calendar date
+      - `count` (number) — contributions made on that date
+    </ResponseField>
+
+    <ResponseField name="total_prs_submitted" type="number">
+      Total number of pull requests the user has authored or updated in the
+      past year across all public repositories.
+    </ResponseField>
+
+    <ResponseField name="prs_merged" type="number">
+      Number of those pull requests that were successfully merged.
+    </ResponseField>
+
+    <ResponseField name="pr_acceptance_rate" type="number">
+      Percentage of submitted PRs that were merged, expressed as a float
+      (e.g., `72.5` means 72.5%).
+    </ResponseField>
+
+    <ResponseField name="avg_pr_size_lines" type="number">
+      Average number of lines changed (additions + deletions) across all merged
+      pull requests. Returns `0` if no PRs were merged.
+    </ResponseField>
+
+    <ResponseField name="avg_time_to_merge_days" type="number">
+      Average time in days from PR creation to merge. Returns `0.0` if no PRs
+      were merged.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "username": "octocat",
+  "github_metrics": {
+    "total_original_repos": 14,
+    "total_forked_repos": 3,
+    "total_contributions_1yr": 847,
+    "active_days_1yr": 203,
+    "activity_graph": [
+      { "date": "2024-07-01", "count": 0 },
+      { "date": "2024-07-02", "count": 4 },
+      { "date": "2024-07-03", "count": 2 }
+    ],
+    "total_prs_submitted": 36,
+    "prs_merged": 29,
+    "pr_acceptance_rate": 80.56,
+    "avg_pr_size_lines": 142,
+    "avg_time_to_merge_days": 1.34
+  }
+}
+```
+
+---
+
+## Error Responses
+
+All errors are returned with HTTP status `400` and a JSON body containing an
+`error` field describing the problem.
+
+<AccordionGroup>
+  <Accordion title="Missing or invalid token">
+    Returned when no token is provided (either via `?token=` or server
+    configuration), or when the token has expired or been revoked.
+
+    ```json
+    {
+      "error": "GitHub token is invalid or expired. Please generate a new token."
+    }
+    ```
+
+    **Resolution:** Generate a fresh classic token at
+    [github.com/settings/tokens](https://github.com/settings/tokens) with the
+    `read:user` scope and pass it via `?token=`.
+  </Accordion>
+
+  <Accordion title="Username not found">
+    Returned when the GitHub GraphQL API cannot locate a user with the given
+    login.
+
+    ```json
+    {
+      "error_graphql": "User Not Found or Unexpected Response"
+    }
+    ```
+
+    **Resolution:** Double-check the spelling of the username. GitHub usernames
+    are case-insensitive but must match an existing account.
+  </Accordion>
+
+  <Accordion title="Rate limit exceeded">
+    Returned when the GitHub API rate limit for the provided token has been
+    exhausted.
+
+    ```json
+    {
+      "error_graphql": "API rate limit exceeded for user ID ..."
+    }
+    ```
+
+    **Resolution:** Wait for your rate limit window to reset (typically 1 hour),
+    or use a different personal access token.
+  </Accordion>
+
+  <Accordion title="Could not parse username">
+    Returned when the `user_input` value cannot be parsed into a valid GitHub
+    username — for example, if a malformed URL is supplied.
+
+    ```json
+    {
+      "error": "Could not parse GitHub username from input"
+    }
+    ```
+
+    **Resolution:** Pass a plain username (e.g., `octocat`) or a well-formed
+    GitHub profile URL (e.g., `https://github.com/octocat`).
+  </Accordion>
+</AccordionGroup>
