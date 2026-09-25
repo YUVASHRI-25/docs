@@ -1,5 +1,5 @@
 ---
-title: "AI Role Prediction: Find Your Best-Fit Job Roles"
+title: "AI Role Prediction: Find Your Best-Fit Fresher Roles"
 sidebarTitle: "Role Prediction"
 description: "Resume Insight uses a HuggingFace AI model to analyze your skills and experience text and recommend the most suitable fresher job roles for you."
 ---
@@ -15,7 +15,7 @@ When you submit your resume text to the role prediction endpoint, Resume Insight
     You provide a combined text string of your technical skills, technologies, and experience summary — the same information already extracted from your resume.
   </Step>
   <Step title="AI Classification">
-    The text is sent to a HuggingFace classification model (`distilbert-base-uncased`) hosted on the HuggingFace Inference API. The model evaluates the input and assigns it to one of seven skill-domain categories.
+    The text is sent to an AI text classification model. The model evaluates the input and assigns it to one of seven skill-domain categories.
   </Step>
   <Step title="Category Mapping">
     The predicted category label is mapped to a curated list of relevant fresher job roles. Each category covers a distinct career track, ensuring the recommendation is specific and actionable.

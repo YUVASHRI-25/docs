@@ -8,11 +8,11 @@ Resume Insight connects to the GitHub API to pull a complete picture of a develo
 
 ## Endpoint
 
-```
+```http
 GET http://localhost:8000/github/analyze_github/{user_input}
 ```
 
-**Authentication:** Not required for this endpoint.
+**Authentication:** A GitHub personal access token is required. Pass it via `?token=` or configure a server-side token — see the [Token parameter](#path--query-parameters) below.
 
 ---
 

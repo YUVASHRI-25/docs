@@ -30,7 +30,7 @@ These variables must be present for Resume Insight to start successfully. Missin
 </ParamField>
 
 <ParamField body="GROQ_API_KEY" type="string" required>
-  Your API key from [console.groq.com](https://console.groq.com). Resume Insight uses GROQ's LLaMA 4 model to extract structured candidate data during the admin Top-N resume ranking workflow. Without this key, the top-resume filter feature is unavailable.
+  Your API key from [console.groq.com](https://console.groq.com). Resume Insight uses GROQ's LLaMA 4 model to extract structured candidate data during the Top-N resume ranking workflow. Without this key, the top-resume filter feature is unavailable.
 
   **Example:** `gsk_xxxxxxxxxxxxxxxxxxxxxxxx`
 </ParamField>
@@ -38,7 +38,7 @@ These variables must be present for Resume Insight to start successfully. Missin
 <ParamField body="GOOGLE_CLIENT_ID" type="string" required>
   Your OAuth 2.0 client ID from the Google Cloud Console. Required to enable the **Sign in with Google** button on the login page. Users who sign up via Google cannot authenticate without this value.
 
-  **Example:** `294482440196-xxxxxxxxxxxx.apps.googleusercontent.com`
+  **Example:** `your-project-id.apps.googleusercontent.com`
 </ParamField>
 
 ---
@@ -48,9 +48,9 @@ These variables must be present for Resume Insight to start successfully. Missin
 These variables are not required to start the server, but they unlock specific features. Resume Insight will run and log a warning if they are absent — the associated feature will be disabled or degraded.
 
 <ParamField body="OPENROUTER_API_KEY" type="string">
-  Your API key from [openrouter.ai](https://openrouter.ai). When present, Resume Insight uses OpenRouter's models to perform a deeper semantic re-ranking pass on top candidate shortlists in the admin filter. Without it, the shortlist is still generated using GROQ extraction alone — the re-ranking step is skipped.
+  Your API key from [openrouter.ai](https://openrouter.ai). Resume Insight uses OpenRouter's models to perform a deeper semantic re-ranking pass on top candidate shortlists. This key is **required for the Top-N ranking feature** — without it, the `/admin/top_resume_filter/top_n` endpoint returns a 500 error.
 
-  **Unlocks:** AI-powered semantic re-ranking in the admin Top-N candidate filter  
+  **Unlocks:** AI-powered semantic re-ranking in the Top-N candidate filter  
   **Example:** `sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxx`
 </ParamField>
 
@@ -64,7 +64,7 @@ These variables are not required to start the server, but they unlock specific f
 <ParamField body="GITHUB_TOKEN" type="string">
   A GitHub Personal Access Token (classic or fine-grained). Enables the GitHub profile analysis feature, which pulls repository counts, language breakdowns, and pull-request metrics for a candidate's GitHub username. Without this token the GitHub analysis endpoint returns an error asking for a token.
 
-  **Unlocks:** GitHub profile analysis in user and admin views  
+  **Unlocks:** GitHub profile analysis  
   **Example:** `ghp_xxxxxxxxxxxxxxxxxxxxxxxx`
 </ParamField>
 
@@ -89,7 +89,7 @@ Create a file named `.env` inside the `backend1/` directory and populate it with
 
 ```bash
 # ── Google OAuth ──────────────────────────────────────────────────────────────
-GOOGLE_CLIENT_ID=your-google-oauth-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_ID=your-project-id.apps.googleusercontent.com
 
 # ── MongoDB ───────────────────────────────────────────────────────────────────
 MONGO_URI=mongodb+srv://youruser:yourpassword@cluster0.mongodb.net/
@@ -104,7 +104,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 # Required — powers top-N candidate extraction
 GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxx
 
-# Optional — enables semantic re-ranking of shortlists
+# Required for Top-N ranking — powers semantic re-ranking of shortlists
 OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxx
 
 # Optional — enables AI role prediction (falls back to free-tier without key)

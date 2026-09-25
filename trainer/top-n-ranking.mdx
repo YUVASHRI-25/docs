@@ -4,7 +4,11 @@ sidebarTitle: "Top-N Ranking"
 description: "Upload resumes for AI-driven profile extraction, then request a ranked shortlist of the top N candidates scored by skills, experience, and academics."
 ---
 
-Top-N ranking is the fastest path from a pile of unread resumes to a confident shortlist. You upload any number of PDF or Word files; Resume Insight's AI (powered by GROQ LLaMA 4) reads each one and extracts a structured candidate profile covering skills, projects, internships, certifications, CGPA, and academic marks. When you're ready to shortlist, you request the top N candidates — the system scores every profile against a weighted rubric, optionally passes the results through an AI reranker for deeper evaluation, and returns a clean ranked list ordered by fit. You can even provide a plain-English instruction to guide the AI toward your specific hiring criteria.
+Top-N ranking is the fastest path from a pile of unread resumes to a confident shortlist. You upload any number of PDF or Word files; Resume Insight's AI (powered by GROQ LLaMA 4) reads each one and extracts a structured candidate profile covering skills, projects, internships, certifications, CGPA, and academic marks. When you're ready to shortlist, you request the top N candidates — the system scores every profile against a weighted rubric, then passes the results through an AI reranker for a final relevance-aware ordering, and returns a clean ranked list ordered by fit. You can even provide a plain-English instruction to guide the AI toward your specific hiring criteria.
+
+<Note>
+  The Top-N ranking feature requires both `GROQ_API_KEY` (for profile extraction) and `OPENROUTER_API_KEY` (for AI reranking) to be configured on the server. Contact your platform administrator if either is missing — the endpoint returns a 500 error without both keys.
+</Note>
 
 ---
 
@@ -15,23 +19,23 @@ Top-N ranking is the fastest path from a pile of unread resumes to a confident s
     Send one or more PDF, DOCX, or DOC files to the upload endpoint. For each file, GROQ LLaMA 4 reads the raw text and extracts a structured JSON profile — name, email, skills, projects, internships, certifications, CGPA, and academic scores. Profiles are stored against a SHA-256 fingerprint of the file, so uploading the same resume twice is safe and will not create duplicates.
   </Step>
   <Step title="Request Your Top-N Shortlist">
-    Call the top-N endpoint with how many candidates you want and an optional natural-language instruction. The system scores all stored profiles using a weighted rubric (skills, experience, projects, certifications, CGPA, and academic marks), then sends the candidates through an AI reranker (via OpenRouter) for a final relevance-aware ordering. The response delivers your ranked shortlist with scores, summaries, and key skills for each candidate.
+    Call the top-N endpoint with how many candidates you want and an optional natural-language instruction. The system scores all stored profiles using a weighted rubric (skills, experience, projects, certifications, CGPA, and academic marks), then sends the candidates through an AI reranker for a final relevance-aware ordering. The response delivers your ranked shortlist with scores, summaries, and key skills for each candidate.
   </Step>
 </Steps>
 
 ### Scoring Weights
 
-The base scoring step assigns points across six dimensions before AI reranking:
+The base scoring step assigns points across seven dimensions before AI reranking. The total possible base score is 100 points:
 
 | Dimension | Max Points | How It's Calculated |
 |---|---|---|
-| Skills | 35 pts | 3.5 × number of skills (capped at 10) |
-| Internships / Experience | 20 pts | 8 × number of internship entries (capped at 2.5) |
+| Skills | 35 pts | 3.5 × number of skills (capped at 10 skills) |
+| Internships / Experience | 20 pts | 8 × number of internship entries (capped at ~2–3) |
 | Projects | 15 pts | 4 × number of projects (capped at ~4) |
 | Certifications | 10 pts | 3 × number of certifications (capped at ~3) |
-| CGPA | 12 pts | (CGPA / 10) × 12 |
-| 12th Marks | 5 pts | (percentage / 100) × 5 |
-| 10th Marks | 3 pts | (percentage / 100) × 3 |
+| CGPA | 12 pts | (CGPA ÷ 10) × 12 |
+| 12th Marks | 5 pts | (percentage ÷ 100) × 5 |
+| 10th Marks | 3 pts | (percentage ÷ 100) × 3 |
 
 After base scoring, the AI reranker adjusts the order based on overall profile quality, skill relevance, and any instructions you provide via the `command` parameter.
 
@@ -128,7 +132,7 @@ curl -X POST http://localhost:8000/admin/top_resume_filter/upload \
 
 **`POST /admin/top_resume_filter/top_n`**
 
-Score and rank all previously uploaded profiles, then return the top N candidates. If you supply a `command`, the AI reranker uses it to adjust the ranking toward your stated preferences. Results include a rank, score, summary, key skills, and email for each shortlisted candidate.
+Score and rank all previously uploaded profiles, then return the top N candidates. If you supply a `command`, the AI reranker uses it to adjust the ranking toward your stated preferences. Results include a rank, score, summary, and up to 8 key skills for each shortlisted candidate.
 
 ### Request Body Parameters
 
@@ -138,10 +142,6 @@ Score and rank all previously uploaded profiles, then return the top N candidate
 
 <ParamField body="command" type="string">
   A natural-language instruction that guides the AI reranker. Describe the type of candidate you want — the AI will prioritize profiles that best match your description. Example: `"Prefer candidates with React and Node.js experience and a CGPA above 8.0"`
-</ParamField>
-
-<ParamField body="use_openrouter" type="boolean" default="true">
-  Whether to use the OpenRouter AI reranker for final ranking. Set to `false` to return results ranked by the base scoring rubric only (no AI reranking). Note: OpenRouter must be configured on the server for AI reranking to function.
 </ParamField>
 
 <ParamField body="filenames" type="string[]">
@@ -154,7 +154,6 @@ Score and rank all previously uploaded profiles, then return the top N candidate
 {
   "top_n": 5,
   "command": "Prefer candidates with React and Node.js experience and a CGPA above 8.0",
-  "use_openrouter": true,
   "filenames": [
     "john_doe.pdf",
     "jane_smith.docx",
@@ -173,7 +172,6 @@ curl -X POST http://localhost:8000/admin/top_resume_filter/top_n \
   -d '{
     "top_n": 5,
     "command": "Prefer candidates with React and Node.js experience and CGPA above 8.0",
-    "use_openrouter": true,
     "filenames": ["john_doe.pdf", "jane_smith.docx", "alex_kumar.pdf", "priya_nair.pdf"]
   }'
 ```
@@ -189,7 +187,7 @@ curl -X POST http://localhost:8000/admin/top_resume_filter/top_n \
       "rank": 1,
       "candidate_name": "Jane Smith",
       "email": "jane.smith@example.com",
-      "key_skills": ["React", "Node.js", "MongoDB", "Express", "Python", "Docker"],
+      "key_skills": ["React", "Node.js", "MongoDB", "Express", "Python", "Docker", "TypeScript", "Git"],
       "score": 87.4,
       "summary": "Top-ranked candidate with strong full-stack skills, 3 internship entries, 5 projects, and a CGPA of 9.1 — excellent match for React and Node.js requirements."
     },
@@ -197,7 +195,7 @@ curl -X POST http://localhost:8000/admin/top_resume_filter/top_n \
       "rank": 2,
       "candidate_name": "Priya Nair",
       "email": "priya.nair@example.com",
-      "key_skills": ["React", "TypeScript", "Node.js", "PostgreSQL", "AWS", "Git"],
+      "key_skills": ["React", "TypeScript", "Node.js", "PostgreSQL", "AWS", "Git", "Docker", "REST APIs"],
       "score": 82.1,
       "summary": "Strong full-stack profile with React and Node.js experience, 2 internships, 4 projects, and a CGPA of 8.7."
     },
@@ -205,7 +203,7 @@ curl -X POST http://localhost:8000/admin/top_resume_filter/top_n \
       "rank": 3,
       "candidate_name": "John Doe",
       "email": "john.doe@example.com",
-      "key_skills": ["Python", "React", "SQL", "Django", "REST APIs", "Git"],
+      "key_skills": ["Python", "React", "SQL", "Django", "REST APIs", "Git", "Flask", "Linux"],
       "score": 74.6,
       "summary": "Solid Python and React skill set with 2 internship entries and 4 projects; CGPA of 8.4 meets the academic threshold."
     },
@@ -213,7 +211,7 @@ curl -X POST http://localhost:8000/admin/top_resume_filter/top_n \
       "rank": 4,
       "candidate_name": "Alex Kumar",
       "email": "alex.kumar@example.com",
-      "key_skills": ["Java", "Spring Boot", "SQL", "React", "Microservices"],
+      "key_skills": ["Java", "Spring Boot", "SQL", "React", "Microservices", "Docker", "Git", "Maven"],
       "score": 68.3,
       "summary": "Java-focused profile with React exposure and 1 internship; CGPA of 7.9 slightly below preference but strong project count."
     }
@@ -223,9 +221,9 @@ curl -X POST http://localhost:8000/admin/top_resume_filter/top_n \
 
 ---
 
-<Note>
-  OpenRouter must be configured on the server (via the `OPENROUTER_API_KEY` environment variable) for AI reranking to work. If OpenRouter is not configured, the `/top_n` endpoint will return a 500 error. Contact your platform administrator if you see this error.
-</Note>
+<Warning>
+  The Top-N ranking endpoint requires `OPENROUTER_API_KEY` to be configured on the server. If it is not set, the endpoint returns a `500` error. Contact your platform administrator to confirm the key is in place before using this feature.
+</Warning>
 
 <Tip>
   Write a specific `command` to get the most relevant shortlist. Instead of a vague instruction like `"Find good candidates"`, try something precise: `"Prefer candidates with machine learning or deep learning skills, at least 2 internships, and a CGPA of 8 or above"`. The AI reranker uses your instruction to reorder candidates accordingly.

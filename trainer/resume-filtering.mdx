@@ -254,8 +254,8 @@ data: {
       "email": "jane.smith@example.com",
       "phone": "+91 91234 56789",
       "ats_score": 71,
-      "education": { ... },
-      "skills": { ... },
+      "education": { "...": "..." },
+      "skills": { "...": "..." },
       "languages": ["Python", "JavaScript"],
       "area_of_interest": ["Full Stack Development"]
     }
@@ -270,7 +270,7 @@ After all files are processed, a closing event is sent with `done: true` and the
 ```json
 data: {
   "done": true,
-  "results": [ ... ],
+  "results": [ "..." ],
   "count": 2
 }
 ```

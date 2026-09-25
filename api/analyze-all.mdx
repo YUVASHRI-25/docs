@@ -46,8 +46,8 @@ POST /analyze_all
 
 <ParamField query="token" type="string">
   A GitHub Personal Access Token. Use this if you want to include private
-  repository counts or if the server-side default token has insufficient rate
-  limits. If omitted, the server uses its own configured token.
+  repository counts in your analysis. If omitted, the service uses a shared
+  token with standard public-API rate limits.
 </ParamField>
 
 ### Example Request

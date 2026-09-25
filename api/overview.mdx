@@ -1,10 +1,10 @@
 ---
-title: "Resume Insight REST API Reference Overview"
+title: "Resume Insight REST API — Complete Reference Overview"
 sidebarTitle: "Overview"
-description: "Complete reference for the Resume Insight REST API — endpoints, authentication, request formats, response shapes, and status codes."
+description: "Complete reference for the Resume Insight REST API — endpoints, authentication, request formats, response shapes, and HTTP status codes."
 ---
 
-The Resume Insight API is a RESTful HTTP API built with FastAPI and served at `http://localhost:8000`. Every feature in the Resume Insight platform — resume uploads, ATS scoring, career guidance, trainer filtering, and admin shortlisting — is powered by this API. Requests are made over HTTP using standard JSON bodies or multipart form data, and every response is returned as JSON. You interact with the API using the `Authorization` header to identify yourself and your role, and the server enforces role-based access on all protected endpoints.
+The Resume Insight API is a RESTful HTTP API served at `http://localhost:8000`. Every feature in the Resume Insight platform — resume uploads, ATS scoring, career guidance, trainer filtering, and admin shortlisting — is powered by this API. Requests are made over HTTP using standard JSON bodies or multipart form data, and every response is returned as JSON. You interact with the API using the `Authorization` header to identify yourself and your role, and the server enforces role-based access on all protected endpoints.
 
 ## Base URL
 
@@ -103,7 +103,7 @@ The API uses standard HTTP status codes to indicate the outcome of every request
 | `403` | Forbidden | The request is authenticated but your role does not have permission to access this endpoint. |
 | `404` | Not Found | The requested resource (user, file, or record) does not exist. |
 | `409` | Conflict | A resource with the same identifier already exists (for example, duplicate email on registration). |
-| `422` | Unprocessable Entity | The request body passed validation but contains semantic errors (FastAPI validation failure). |
+| `422` | Unprocessable Entity | The request body passed validation but contains semantic errors. |
 | `500` | Internal Server Error | An unexpected error occurred on the server side. |
 
 ## Endpoint Groups
@@ -124,16 +124,3 @@ The API is organized into four groups. Select a group below to jump to its full 
     Manage your account, view resume history, save career guidance, and generate portfolio pages from your resume data.
   </Card>
 </CardGroup>
-
-## Interactive Docs
-
-Resume Insight's FastAPI backend automatically generates two interactive API documentation interfaces you can use to explore and test endpoints directly from your browser — no additional tooling required.
-
-| Interface | URL | Description |
-|-----------|-----|-------------|
-| **Swagger UI** | `http://localhost:8000/docs` | Interactive interface where you can read endpoint details and send live test requests. |
-| **ReDoc** | `http://localhost:8000/redoc` | Clean, read-only reference view organized by tag — ideal for browsing the full API surface. |
-
-<Info>
-  Both documentation interfaces are auto-generated from the API source code and always reflect the current state of the running server. Use Swagger UI when you want to test an endpoint interactively, and ReDoc when you want a printable, structured overview.
-</Info>

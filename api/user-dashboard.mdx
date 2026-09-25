@@ -1,13 +1,13 @@
 ---
-title: "User Dashboard API: Profile, Resume, and Portfolio Endpoints"
+title: "User Dashboard: Manage Your Profile and Resume Data"
 sidebarTitle: "User API"
-description: "Manage your job-seeker profile, upload resumes for ATS analysis, cache career guidance, generate your portfolio, and download company skillset data."
+description: "Manage your profile, upload resumes for ATS scoring, save career guidance, generate a shareable portfolio, and download company skillsets."
 ---
 
-The `/user` endpoint group is the core of every job seeker's experience on Resume Insight. It covers your account profile, resume upload and analysis, career guidance caching, auto-generated portfolio creation, and access to the company skillset data that powers skill-gap reports. All endpoints read and write against your account, identified by your registered email address.
+The `/user` endpoint group is the core of every job seeker's experience on Resume Insight. It covers your account profile, resume upload and analysis, career guidance caching, auto-generated portfolio creation, and access to the company skillset data that powers skill-gap reports. All endpoints read and write data associated with your registered email address.
 
 <Note>
-  All endpoints on this page require an `Authorization: Bearer <token>` header. The authenticated account must have `role == "user"`. Trainer and admin tokens receive `403 Forbidden`.
+  All endpoints on this page require an `Authorization: Bearer <token>` header. Tokens are obtained from `POST /auth/login` or `POST /auth/google_signin`. Requests made without a valid token receive `401 Unauthorized`.
 </Note>
 
 ---
@@ -232,7 +232,7 @@ curl http://localhost:8000/user/guidance/alice@example.com \
 
 ## POST /user/guidance/\{email\}
 
-Save a guidance object to your account cache. The frontend calls this after generating a career roadmap so that results are persisted and accessible on your next visit without re-running the AI.
+Save a guidance object to your account cache. The app calls this after generating a career roadmap so that results are persisted and accessible on your next visit without re-running the AI.
 
 **Content-Type:** `application/json`
 
@@ -335,7 +335,7 @@ curl -X POST http://localhost:8000/user/portfolio \
 
 ## GET /user/skillset
 
-Download the active company skillset as an Excel file (`.xlsx`). This is the same file that trainers upload via `POST /admin/upload_skillset`. Use it to see exactly which skills each company expects so you can target your resume accordingly.
+Download the active company skillset as an Excel file (`.xlsx`). Use this file to see exactly which skills each company expects so you can target your resume accordingly.
 
 ### Example Request
 
@@ -351,7 +351,7 @@ The response is a binary `.xlsx` file download with `Content-Disposition: attach
 
 ## GET /user/skillset\_json
 
-Get the active company skillset as JSON. Each key in the response is a sheet (company/domain) and each value is an array of row objects. Use this to display skill requirements in your app without parsing an Excel file.
+Get the active company skillset as JSON. Each key in the response is a sheet (company or domain) and each value is an array of row objects. Use this to display skill requirements in your application without parsing an Excel file.
 
 ### Example Request
 

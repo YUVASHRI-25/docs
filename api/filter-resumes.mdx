@@ -1,5 +1,5 @@
 ---
-title: "Filter Resumes API: Bulk Screening with Criteria"
+title: "Trainer Resume Filter API: Screen Candidates by Criteria"
 sidebarTitle: "Filter Resumes"
 description: "Upload and screen multiple resumes using academic, skill, and ATS filters. Choose between a batch endpoint and real-time Server-Sent Event streaming."
 ---
@@ -202,7 +202,7 @@ Identical filtering logic to the batch endpoint above, but the server emits resu
 
 Each event is a JSON-encoded `data:` line followed by a blank line:
 
-```
+```text
 data: {"progress": 1, "total": 3, "processed": 1, "latest_filename": "resume_alice.pdf", ...}\n\n
 data: {"progress": 2, "total": 3, "processed": 1, "latest_filename": "resume_bob.docx", ...}\n\n
 data: {"done": true, "results": [...], "count": 2}\n\n

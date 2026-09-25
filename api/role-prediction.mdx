@@ -1,7 +1,7 @@
 ---
-title: "POST /predict-role — AI Fresher Role Recommender"
+title: "POST /predict-role — AI Role Recommender for Freshers"
 sidebarTitle: "Role Prediction"
-description: "POST /predict-role uses a HuggingFace AI model to classify your skills and recommend the best-fit fresher job roles for your profile."
+description: "POST /predict-role uses an AI model to classify your skills and recommend the best-fit fresher job roles for your profile, with automatic fallback."
 ---
 
 The `/predict-role` endpoint uses an AI classification model to analyze your skills and experience text, then recommends the most suitable entry-level job roles for you. You pass in a free-form string — typically a combination of your technical skills, technologies you know, and a short summary of your background — and the model returns a predicted category label and a curated list of fresher roles that match your profile. If the AI service is temporarily unavailable, the endpoint automatically falls back to a keyword-based heuristic so you always get a result.
@@ -109,8 +109,8 @@ The AI model classifies your input into one of seven labels. Each label maps to 
 ## Fallback Behavior
 
 <Note>
-  If the HuggingFace AI service is unavailable — due to a network timeout,
-  rate limit, or authentication issue — the endpoint automatically switches to
+  If the AI service is temporarily unavailable — due to a network timeout or
+  rate limit — the endpoint automatically switches to
   a **keyword-based heuristic**. The heuristic scans your input for known
   technology keywords and assigns a label accordingly. In this case, the
   response will have `"confidence": 0.5` to indicate that the fallback was used

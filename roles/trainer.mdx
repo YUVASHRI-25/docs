@@ -53,7 +53,7 @@ curl -X POST http://localhost:8000/auth/login \
 The response includes an `access_token`. Use this token in the `Authorization` header for all trainer-specific requests.
 
 <Note>
-  Every trainer endpoint requires a valid Bearer token that carries the `trainer` role. Requests without a token, or with a token belonging to a `user` or `admin` role, will be rejected with `403 Forbidden`.
+  Every trainer endpoint requires a valid Bearer token associated with the `trainer` role. Requests without a token, or with a token belonging to a different role, will be rejected with `403 Forbidden`.
 </Note>
 
 ## Filtering Resumes
@@ -71,15 +71,23 @@ Submit a batch of resume files along with your filter criteria to `POST /admin/f
 </ParamField>
 
 <ParamField body="cgpa_max" type="number">
-  Maximum CGPA. Useful if you want to target a specific CGPA range.
+  Maximum CGPA. Useful if you want to target a specific CGPA range (e.g., `9.0`).
 </ParamField>
 
 <ParamField body="tenth" type="number">
   Minimum 10th standard percentage (e.g., `75`).
 </ParamField>
 
+<ParamField body="tenth_max" type="number">
+  Maximum 10th standard percentage. Use together with `tenth` to filter within a range.
+</ParamField>
+
 <ParamField body="twelfth" type="number">
   Minimum 12th standard percentage (e.g., `80`).
+</ParamField>
+
+<ParamField body="twelfth_max" type="number">
+  Maximum 12th standard percentage. Use together with `twelfth` to filter within a range.
 </ParamField>
 
 <ParamField body="ats" type="number">

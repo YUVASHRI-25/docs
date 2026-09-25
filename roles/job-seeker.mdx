@@ -89,7 +89,7 @@ curl -X POST http://localhost:8000/user/upload_resume \
       "bachelor": { "degree": "B.E. Computer Science", "college": "State Engineering College", "cgpa": "8.45" }
     },
     "skills": {
-      "technical": ["Python", "React", "Node.js", "MongoDB", "REST APIs"],
+      "technical": ["Python", "React", "Node.js", "REST APIs", "Docker"],
       "programming_languages": ["Python", "JavaScript", "Java"],
       "area_of_interest": ["Full Stack Development", "Cloud Computing"]
     },
@@ -98,7 +98,7 @@ curl -X POST http://localhost:8000/user/upload_resume \
       {
         "title": "E-Commerce Platform",
         "description": "Built a full-stack shopping app using React and Node.js",
-        "technologies": ["React", "Node.js", "MongoDB"]
+        "technologies": ["React", "Node.js", "PostgreSQL"]
       }
     ]
   },
@@ -150,7 +150,7 @@ curl -X POST http://localhost:8000/guidance/generate \
     "resume_data": {
       "name": "Alex Johnson",
       "skills": {
-        "technical": ["Python", "React", "MongoDB"],
+        "technical": ["Python", "React", "Docker"],
         "area_of_interest": ["Full Stack Development"]
       },
       "education": {
@@ -165,7 +165,7 @@ curl -X POST http://localhost:8000/guidance/generate \
 ```json
 {
   "guidance": {
-    "current_profile_summary": "You have a strong foundation in full-stack development with skills in Python, React, and MongoDB.",
+    "current_profile_summary": "You have a strong foundation in full-stack development with skills in Python, React, and Docker.",
     "recommended_role": "Full Stack Developer",
     "short_term_goals": [
       "Complete a TypeScript course and refactor one of your existing React projects",
@@ -186,7 +186,29 @@ curl -X POST http://localhost:8000/guidance/generate \
 }
 ```
 
-You can also generate a role-specific learning roadmap using `POST /guidance/role-roadmap` by specifying your target role, current skills, and experience level.
+You can also generate a role-specific learning roadmap using `POST /guidance/role-roadmap`. Specify your `target_role`, a list of `current_skills`, and your `experience_level` (`"fresher"` by default).
+
+```bash
+curl -X POST http://localhost:8000/guidance/role-roadmap \
+  -H "Content-Type: application/json" \
+  -d '{
+    "target_role": "Data Scientist",
+    "current_skills": ["Python", "React", "SQL"],
+    "experience_level": "fresher"
+  }'
+```
+
+<ParamField body="target_role" type="string" required>
+  The job role you want to work toward (e.g., `"Data Scientist"`, `"Cloud Engineer"`).
+</ParamField>
+
+<ParamField body="current_skills" type="array" required>
+  A list of your current technical skills. The AI compares these against the target role's requirements to build your personalized learning path.
+</ParamField>
+
+<ParamField body="experience_level" type="string">
+  Your current experience level. Accepted values: `"fresher"`, `"junior"`, `"mid"`. Defaults to `"fresher"` if not provided.
+</ParamField>
 
 ## AI Chat
 
@@ -199,7 +221,7 @@ curl -X POST http://localhost:8000/ai/chat \
     "query": "I want to transition into data science. What steps should I take given my current skills?",
     "resume_data": {
       "skills": {
-        "technical": ["Python", "React", "MongoDB"],
+        "technical": ["Python", "React", "Docker"],
         "area_of_interest": ["Full Stack Development"]
       },
       "education": {
@@ -221,7 +243,7 @@ curl -X POST http://localhost:8000/ai/chat \
 
 ```json
 {
-  "response": "Given your Python background and experience with MongoDB, you already have two of the most critical skills for a data science role. I'd recommend the following path: 1) Start with NumPy, Pandas, and Matplotlib to build your data manipulation and visualization skills. 2) Work through a structured machine learning course (fast.ai or Andrew Ng's ML Specialization on Coursera). 3) Build 2–3 end-to-end projects — for example, a churn prediction model or a recommendation engine — and publish them on GitHub. 4) Learn SQL deeply, as most data science interviews include SQL rounds. 5) Once comfortable, explore scikit-learn and then move to deep learning with TensorFlow or PyTorch."
+  "response": "Given your Python background and experience with Docker, you already have two of the most critical skills for a data science role. I'd recommend the following path: 1) Start with NumPy, Pandas, and Matplotlib to build your data manipulation and visualization skills. 2) Work through a structured machine learning course (fast.ai or Andrew Ng's ML Specialization on Coursera). 3) Build 2–3 end-to-end projects — for example, a churn prediction model or a recommendation engine — and publish them on GitHub. 4) Learn SQL deeply, as most data science interviews include SQL rounds. 5) Once comfortable, explore scikit-learn and then move to deep learning with TensorFlow or PyTorch."
 }
 ```
 

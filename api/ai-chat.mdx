@@ -1,16 +1,16 @@
 ---
-title: "POST /ai/chat — Resume-Aware AI Career Assistant"
+title: "AI Chat: Resume-Aware Personalised Career Guidance"
 sidebarTitle: "AI Chat"
-description: "POST /ai/chat sends a career question alongside your resume data and returns personalized AI advice powered by OpenRouter GPT models."
+description: "Ask career questions via POST /ai/chat with your resume context and receive AI-powered advice tailored to your skills and background."
 ---
 
-The AI Chat endpoint is Resume Insight's conversational career advisor. You send a plain-language question — about skill gaps, career paths, interview prep, or anything career-related — and optionally include your structured resume data so the AI can tailor its response to your actual background. The endpoint is powered by OpenRouter's GPT-4o-mini model, keeping responses focused and actionable.
+The AI Chat endpoint is Resume Insight's conversational career advisor. You send a plain-language question — about skill gaps, career paths, interview prep, or anything career-related — and optionally include your structured resume data so the AI can tailor its response to your actual background. Responses are focused, actionable, and typically 2–5 paragraphs long.
 
 ---
 
 ## POST /ai/chat
 
-**Authentication:** Not required — this endpoint is open.  
+**Authentication:** Not required — this endpoint is open.
 **Content-Type:** `application/json`
 
 ### Request Parameters
@@ -38,6 +38,12 @@ The AI Chat endpoint is Resume Insight's conversational career advisor. You send
   </Expandable>
 </ParamField>
 
+### Response Fields
+
+<ResponseField name="response" type="string">
+  The AI-generated career advice. Responses are plain text, typically 2–5 paragraphs, tailored to the context in your `resume_data` and the specificity of your `query`.
+</ResponseField>
+
 ### Example Request
 
 ```bash
@@ -55,28 +61,6 @@ curl -X POST http://localhost:8000/ai/chat \
     }
   }'
 ```
-
-### Example Request Body
-
-```json
-{
-  "query": "What skills should I add to become a backend developer?",
-  "resume_data": {
-    "skills": {
-      "technical": ["Python", "HTML", "CSS"]
-    },
-    "education": [
-      { "degree": "B.E. Computer Science", "cgpa": "8.2" }
-    ]
-  }
-}
-```
-
-### Response Fields
-
-<ResponseField name="response" type="string">
-  The AI-generated career advice. Responses are plain text, typically 2–5 paragraphs, tailored to the context in your `resume_data` and the specificity of your `query`.
-</ResponseField>
 
 ### Example Response
 
@@ -109,9 +93,11 @@ curl -X POST http://localhost:8000/ai/chat \
   Responses are limited to **512 tokens** — roughly 350–400 words. For a detailed multi-stage career roadmap, use the `/guidance/role-roadmap` endpoint instead, which is designed for long-form structured output.
 </Note>
 
-### Example: Asking Without Resume Data
+---
 
-You can also use the endpoint without any resume context for general career questions:
+## Example: Asking Without Resume Data
+
+You can use the endpoint without any resume context for general career questions:
 
 ```json
 {
@@ -121,7 +107,9 @@ You can also use the endpoint without any resume context for general career ques
 
 The AI will provide a clear, general answer. For personalised gap analysis, always include your `resume_data`.
 
-### Example: Advanced Query with Full Context
+---
+
+## Example: Advanced Query with Full Context
 
 ```bash
 curl -X POST http://localhost:8000/ai/chat \
